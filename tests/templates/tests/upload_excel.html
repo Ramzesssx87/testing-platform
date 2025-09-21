@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="upload-container">
+    <h2>Загрузка теста из Excel</h2>
+    
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="id_excel_file">Excel файл:</label>
+            {{ form.excel_file }}
+            {% if form.excel_file.errors %}
+                <div class="error">{{ form.excel_file.errors }}</div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="id_test_name">Название теста (необязательно):</label>
+            {{ form.test_name }}
+            {% if form.test_name.errors %}
+                <div class="error">{{ form.test_name.errors }}</div>
+            {% endif %}
+            <small>{{ form.test_name.help_text }}</small>
+        </div>
+        
+        <button type="submit" class="upload-btn">Загрузить тест</button>
+        <a href="{% url 'test_selection' %}" class="back-btn">Отмена</a>
+    </form>
+</div>
+
+<style>
+    .upload-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    
+    .form-group input[type="file"],
+    .form-group input[type="text"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .upload-btn {
+        background-color: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-right: 10px;
+    }
+    
+    .back-btn {
+        background-color: #6c757d;
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        border-radius: 4px;
+        display: inline-block;
+    }
+</style>
+{% endblock %}

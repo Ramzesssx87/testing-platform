@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Выбор теста{% endblock %}
+
+{% block content %}
+    <!-- Отображение сообщений -->
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <h1>Выберите тест</h1>
+    
+    <!-- Кнопки для администратора -->
+    {% if user.is_staff %}
+    <div style="text-align: right; margin-bottom: 20px;">
+        <a href="{% url 'upload_excel' %}" class="upload-excel-btn" 
+           style="background-color: #28a745; color: white; padding: 10px 15px; 
+                  text-decoration: none; border-radius: 4px; display: inline-block;">
+            📤 Загрузить тест из Excel
+        </a>
+        <a href="{% url 'manage_tests' %}" style="background-color: #3498db; color: white; padding: 10px 15px; 
+                  text-decoration: none; border-radius: 4px; display: inline-block; margin-left: 10px;">
+            ⚙️ Управление тестами
+        </a>
+    </div>
+    {% endif %}
+    
+    <!-- Форма выбора теста -->
+    <div class="test-form">
+        <form method="post">
+            {% csrf_token %}
+            <div>
+                <label for="id_test">Тест:</label>
+                {{ form.test }}
+            </div>
+            <div class="range-fields">
+                <label>Диапазон вопросов:</label>
+                <div style="display: flex; gap: 10px;">
+                    {{ form.start_question }}
+                    <span style="line-height: 40px;">по</span>
+                    {{ form.end_question }}
+                </div>
+            </div>
+            {% if form.errors %}
+                <div class="error">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <button type="submit">Начать тест</button>
+        </form>
+    </div>
+    
+    <!-- Список текущих тестов пользователя -->
+    <div class="progress-list">
+        <h2>Ваши текущие тесты</h2>
+        {% for item in progress_info %}
+            {% with progress=item.progress %}
+            <div class="progress-item">
+                <h3>{{ progress.test.name }}</h3>
+                
+                <!-- Информация о диапазоне вопросов -->
+                <div class="question-range">
+                    {% if progress.start_question and progress.end_question %}
+                        Вопросы: с {{ progress.start_question }} по {{ progress.end_question }}
+                    {% elif progress.start_question %}
+                        Вопросы: с {{ progress.start_question }} по последний
+                    {% elif progress.end_question %}
+                        Вопросы: с первого по {{ progress.end_question }}
+                    {% else %}
+                        Все вопросы теста
+                    {% endif %}
+                </div>
+                
+                <div class="test-stats">
+                    <span>
+                        {% if not progress.completed %}
+                            Текущий вопрос: {{ progress.current_question.question_number }}
+                        {% else %}
+                            Тест завершен
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="progress-info">
+                    <p>Статус: {{ progress.completed|yesno:"Завершен,В процессе" }}</p>
+                    <p>Прогресс: 
+                        {{ item.answered_in_range }}/{{ item.total_in_range }} вопросов
+                    </p>
+                </div>
+                
+                <div class="nav-links">
+                    {% if not progress.completed %}
+                        <a href="{% url 'test_progress' progress.test.id %}">
+                            Продолжить тест
+                        </a>
+                    {% else %}
+                        <a href="{% url 'test_results' progress.test.id %}">
+                            Посмотреть результаты
+                        </a>
+                    {% endif %}
+                    
+                    <a href="#" onclick="return confirmReset({{ progress.test.id }})" style="background-color: #dc3545;">
+                        Сбросить прогресс
+                    </a>
+                </div>
+            </div>
+            {% endwith %}
+        {% empty %}
+            <p>У вас нет активных тестов.</p>
+        {% endfor %}
+    </div>
+    
+    <div class="nav-links">
+        <a href="{% url 'logout' %}">Выйти</a>
+    </div>
+
+    <!-- Стили для сообщений -->
+    <style>
+        .messages {
+            margin-bottom: 20px;
+        }
+        
+        .alert {
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function confirmReset(testId) {
+        if (confirm("Вы уверены, что хотите сбросить прогресс? Все ваши ответы будут удалены.")) {
+            // Создаем скрытую форму для отправки POST запроса
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/test/' + testId + '/reset/';
+            
+            // Добавляем CSRF токен
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+            
+            // Добавляем форму в документ и отправляем
+            document.body.appendChild(form);
+            form.submit();
+        }
+        return false;
+    }
+</script>
+{% endblock %}

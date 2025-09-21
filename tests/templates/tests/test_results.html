@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Результаты теста - {{ test.name }}{% endblock %}
+
+{% block content %}
+<h1>Результаты теста: {{ test.name }}</h1>
+
+<div class="test-results">
+    <div class="score">
+        <h2>Ваш результат: {{ correct_answers }}/{{ total_questions }} ({{ score|floatformat:1 }}%)</h2>
+    </div>
+
+    <div class="questions-review">
+        <h3>Детализация ответов:</h3>
+        {% for question in questions %}
+        <div class="question-item {% if question.id|stringformat:'s' in user_answers %}answered{% else %}not-answered{% endif %}">
+            <div class="question-text">
+                <strong>Вопрос {{ question.question_number }}:</strong> {{ question.question_text }}
+            </div>
+            
+            <div class="correct-answer">
+                <strong>Правильные ответы:</strong>
+                {% for answer in question.correct_answer|split:"," %}
+                    <span class="correct-option">{{ question.answer_options|get_item:answer }}</span>
+                {% endfor %}
+            </div>
+
+            <div class="user-answer">
+                <strong>Ваши ответы:</strong>
+                {% with user_answer=user_answers|get_item:question.id|stringformat:'s' %}
+                    {% if user_answer %}
+                        {% for answer in user_answer %}
+                            <span class="user-option {% if answer in question.correct_answer %}correct{% else %}incorrect{% endif %}">
+                                {{ question.answer_options|get_item:answer }}
+                            </span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="not-answered">Нет ответа</span>
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            <div class="document-reference">
+                <strong>Ссылка на документ:</strong> {{ question.document_reference }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="actions">
+        <a href="{% url 'test_selection' %}" class="btn">Вернуться к выбору теста</a>
+        <a href="{% url 'reset_test_progress' test.id %}" class="btn">Пройти тест заново</a>
+    </div>
+</div>
+
+<style>
+    .question-item {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+    }
+    
+    .correct-option {
+        background-color: #dff0d8;
+        padding: 5px;
+        margin: 2px;
+        border-radius: 3px;
+        display: inline-block;
+    }
+    
+    .user-option.correct {
+        background-color: #dff0d8;
+        padding: 5px;
+        margin: 2px;
+        border-radius: 3px;
+        display: inline-block;
+    }
+    
+    .user-option.incorrect {
+        background-color: #f2dede;
+        padding: 5px;
+        margin: 2px;
+        border-radius: 3px;
+        display: inline-block;
+    }
+    
+    .not-answered {
+        color: #a94442;
+        font-style: italic;
+    }
+    
+    .actions {
+        margin-top: 20px;
+    }
+    
+    .btn {
+        display: inline-block;
+        padding: 10px 15px;
+        background-color: #3498db;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-right: 10px;
+    }
+</style>
+{% endblock %}

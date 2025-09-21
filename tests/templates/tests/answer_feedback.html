@@ -1,0 +1,66 @@
+{% load custom_filters %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Результат ответа</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .feedback { 
+            padding: 20px; border-radius: 5px; margin: 20px 0; 
+            text-align: left; 
+        }
+        .correct { background-color: #dff0d8; color: #3c763d; }
+        .incorrect { background-color: #f2dede; color: #a94442; }
+        .document-ref { margin: 15px 0; }
+        .continue-btn { 
+            background-color: #2196F3; color: white; padding: 10px 15px; 
+            text-decoration: none; border-radius: 4px; display: inline-block; 
+        }
+        .question-text {
+            font-weight: bold;
+            margin-bottom: 15px;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .answer-section {
+            margin: 10px 0;
+        }
+        .answer-block {
+            margin: 10px 0;
+        }
+        .answer-line {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="feedback {% if is_correct %}correct{% else %}incorrect{% endif %}">
+        <h2>{% if is_correct %}Ответ правильный!{% else %}Ответ не верный!{% endif %}</h2>
+        
+        <div class="question-text">
+            <h3>Вопрос:</h3>
+            <p>{{ question_text }}</p>
+        </div>
+        
+        <div class="document-ref">
+            <p>Ссылка на документ: {{ document_reference }}</p>
+        </div>
+        
+        <div class="answer-block">
+            <strong>Правильные ответы:</strong>
+            {% for answer in correct_answers %}
+                <div class="answer-line">{{ answer_options|get_item:answer }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div style="text-align: center;">
+        <a href="{% url 'test_progress' test.id %}" class="continue-btn">
+            {% if next_question %}Следующий вопрос{% else %}Завершить тест{% endif %}
+        </a>
+    </div>
+</body>
+</html>

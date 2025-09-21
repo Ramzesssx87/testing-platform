@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тестирование - {{ test.name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .progress-bar { 
+            height: 20px; background-color: #f0f0f0; border-radius: 10px; 
+            margin-bottom: 20px; 
+        }
+        .progress { 
+            height: 100%; background-color: #4CAF50; border-radius: 10px; 
+            width: {{ progress_percent }}%; 
+        }
+        .question { margin-bottom: 20px; }
+        .options label { display: block; margin: 10px 0; }
+        button { 
+            background-color: #4CAF50; color: white; padding: 10px 15px; 
+            border: none; border-radius: 4px; cursor: pointer; 
+        }
+        .back-btn { 
+            background-color: #2196F3; color: white; padding: 10px 15px; 
+            text-decoration: none; border-radius: 4px; display: inline-block; 
+        }
+        .buttons-container { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ test.name }}</h1>
+        
+        <div class="progress-bar">
+            <div class="progress"></div>
+        </div>
+        <p>Вопрос {{ question_number }} из {{ total_questions }}</p>
+        
+        <div class="question">
+            <h2>{{ question.question_text }}</h2>
+            <form method="post" id="answer-form">
+                {% csrf_token %}
+                <div class="options">
+                    {% for key, value in question.answer_options.items %}
+                        <label>
+                            <input type="checkbox" name="answer" value="{{ key }}">
+                            {{ value }}
+                        </label>
+                    {% endfor %}
+                </div>
+                <button type="submit">Ответить</button>
+            </form>
+        </div>
+        
+        <div class="buttons-container">
+            <a href="{% url 'test_selection' %}" class="back-btn">Вернуться к выбору теста</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!-- tests/templates/tests/manage_tests.html -->
+{% extends 'base.html' %}
+
+{% block title %}Управление тестами{% endblock %}
+
+{% block content %}
+<div class="manage-tests-container">
+    <h1>Управление тестами</h1>
+    
+    <div class="nav-links">
+        <a href="{% url 'test_selection' %}" class="back-btn">← Назад к выбору теста</a>
+        <a href="{% url 'upload_excel' %}" class="upload-btn">📤 Загрузить новый тест</a>
+    </div>
+    
+    <div class="tests-list">
+        {% for test in tests %}
+            <div class="test-item">
+                <div class="test-info">
+                    <h3>{{ test.name }}</h3>
+                    <p>Вопросов: {{ test.question_count }}</p>
+                    <p>Создан: {{ test.created_at|date:"d.m.Y H:i" }}</p>
+                    {% if test.description %}
+                        <p class="test-description">{{ test.description }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- tests/templates/tests/manage_tests.html - обновим раздел с кнопками -->
+                <!-- tests/templates/tests/manage_tests.html - обновим раздел с кнопками -->
+                <div class="test-actions">
+                 <a href="{% url 'test_progress' test.id %}" class="take-test-btn" style="background-color: #28a745;">
+                    📝 Пройти тест
+                </a>
+    
+                <a href="{% url 'export_test' test.id %}" class="export-btn" style="background-color: #17a2b8;">
+                    📥 Экспорт Теста в Excel
+                </a>
+    
+                <a href="{% url 'export_answers' test.id %}" class="export-btn" style="background-color: #6f42c1;">
+                    📥 Экспорт Ответов в Excel
+                </a>
+    
+                <a href="#" class="edit-btn" onclick="openEditModal({{ test.id }}, '{{ test.name|escapejs }}', '{{ test.description|escapejs }}')">
+                    ✏️ Редактировать
+                </a>
+    
+                    <form method="post" class="delete-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="test_id" value="{{ test.id }}">
+                        <input type="hidden" name="action" value="delete">
+                        <button type="submit" class="delete-btn" 
+                                onclick="return confirm('Вы уверены, что хотите удалить тест \"{{ test.name }}\"?')">
+                            🗑️ Удалить
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% empty %}
+            <p class="no-tests">Тесты не найдены. <a href="{% url 'upload_excel' %}">Загрузите первый тест</a></p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Модальное окно редактирования теста -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditModal()">&times;</span>
+        <h2>Редактирование теста</h2>
+        <form id="editTestForm" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="test_id" id="editTestId">
+            <input type="hidden" name="action" value="edit">
+            
+            <div class="form-group">
+                <label for="editTestName">Название теста:</label>
+                <input type="text" id="editTestName" name="test_name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="editTestDescription">Описание теста:</label>
+                <textarea id="editTestDescription" name="test_description" rows="4"></textarea>
+            </div>
+            
+            <button type="submit" class="save-btn">Сохранить изменения</button>
+        </form>
+    </div>
+</div>
+
+<style>
+    .manage-tests-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .nav-links {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+    
+    .test-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        margin-bottom: 15px;
+        background-color: #f9f9f9;
+        border-radius: 5px;
+        border-left: 4px solid #3498db;
+    }
+    
+    .test-info h3 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+    }
+    
+    .test-description {
+        font-style: italic;
+        color: #7f8c8d;
+        margin: 5px 0 0 0;
+    }
+    
+    .test-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: 150px;
+    }
+    
+    .take-test-btn, .export-btn, .edit-btn {
+        color: white;
+        padding: 8px 12px;
+        text-decoration: none;
+        border-radius: 4px;
+        text-align: center;
+        font-size: 14px;
+    }
+    
+    .edit-btn {
+        background-color: #ffc107;
+    }
+    
+    .export-btn {
+        background-color: #17a2b8;
+    }
+    
+    .delete-form {
+        margin: 0;
+    }
+    
+    .delete-btn {
+        background-color: #e74c3c;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        width: 100%;
+    }
+    
+    .no-tests {
+        text-align: center;
+        padding: 30px;
+        background-color: #f9f9f9;
+        border-radius: 5px;
+    }
+    
+    /* Стили для модального окна */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+    }
+    
+    .modal-content {
+        background-color: #fefefe;
+        margin: 10% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 5px;
+    }
+    
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    
+    .close:hover {
+        color: black;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    
+    .form-group input, .form-group textarea {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .save-btn {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        width: 100%;
+    }
+</style>
+
+<script>
+    // Функция для получения CSRF токена
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function openEditModal(testId, testName, testDescription) {
+        document.getElementById('editTestId').value = testId;
+        document.getElementById('editTestName').value = testName;
+        document.getElementById('editTestDescription').value = testDescription;
+        document.getElementById('editModal').style.display = 'block';
+    }
+    
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+    
+    // Закрытие модального окна при клике вне его
+    window.onclick = function(event) {
+        const modal = document.getElementById('editModal');
+        if (event.target == modal) {
+            closeEditModal();
+        }
+    }
+    
+    // Обработка отправки формы редактирования
+    document.getElementById('editTestForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        fetch('{% url "manage_tests" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCookie('csrftoken'),
+            }
+        })
+        .then(response => {
+            // Проверяем, является ли ответ JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                throw new Error('Получен неверный формат ответа от сервера');
+            }
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                showNotification(data.message, 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('Ошибка при сохранении: ' + error.message, 'error');
+        });
+    });
+</script>
+{% endblock %}

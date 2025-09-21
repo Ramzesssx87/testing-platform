@@ -1,0 +1,16 @@
+testing_platform/
+├── manage.py
+├── requirements.txt         
+├── testing_platform/
+│   ├── __init__.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+└── tests/
+    ├── __init__.py
+    ├── models.py
+    ├── views.py
+    ├── forms.py
+    ├── urls.py
+    ├── templates/
+    └── ...
