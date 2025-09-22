@@ -15,7 +15,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Загрузка переменных окружения из .env файла
-load_dotenv()
+# Сначала пробуем загрузить .env.development, если он существует
+if os.path.exists('.env.development'):
+    load_dotenv('.env.development')
+    print("Загружены настройки разработки из .env.development")
+else:
+    load_dotenv('.env')
+    print("Загружены настройки из .env")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,21 +29,28 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
-if not SECRET_KEY and DEBUG:
-    SECRET_KEY = 'временный-ключ-для-разработки-но-не-для-продакшена'
-elif not SECRET_KEY:
-    raise ValueError("SECRET_KEY не установлен. Установите переменную окружения DJANGO_SECRET_KEY.")
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['192.168.0.100', 'localhost', '127.0.0.1', '0.0.0.0', '45.150.9.226', 'xn--80adcd6auacaebk6a.xn--p1ai' ]
+if not SECRET_KEY and DEBUG:
+    SECRET_KEY = 'Ramzesssx87'
+elif not SECRET_KEY:
+    raise ValueError("SECRET_KEY не установлен. Установите переменную окружения DJANGO_SECRET_KEY.")
+
+# Базовые хосты
+ALLOWED_HOSTS = ['192.168.0.100', 'localhost', '127.0.0.1', '0.0.0.0', '45.150.9.226', 'xn--80adcd6auacaebk6a.xn--p1ai']
+
+print(f"DEBUG: {DEBUG}")
+print(f"SECRET_KEY: {SECRET_KEY}")
+print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+
 
 # Добавляем хост из переменной окружения, если указан
 allowed_hosts_env = os.getenv('ALLOWED_HOSTS')
 if allowed_hosts_env:
-    ALLOWED_HOSTS.extend(allowed_hosts_env.split(','))
+    ALLOWED_HOSTS.extend(host.strip() for host in allowed_hosts_env.split(',') if host.strip())
 
+# Остальной код без изменений...
 # Application definition
 
 INSTALLED_APPS = [
@@ -137,7 +150,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Настройки безопасности для production
-if not DEBUG:
+if not DEBUG and not any(host in ['localhost', '127.0.0.1', '192.168.0.100', '0.0.0.0'] for host in ALLOWED_HOSTS):
     # HTTPS settings
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

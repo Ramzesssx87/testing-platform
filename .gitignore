@@ -1,20 +1,27 @@
-# Django
-*.log
-*.pot
-*.pyc
-__pycache__/
-local_settings.py
-db.sqlite3
-media/
-
 # Environment variables
 .env
-*.env
-.env.*
-.env.local
 .env.development
-.env.test
 .env.production
+*.env
+
+# Database
+*.sqlite3
+*.db
+db.sqlite3
+
+# Logs
+*.log
+django_errors.log
+
+# Virtual environment
+TN/
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.pyc
 
 # IDE
 .vscode/
@@ -32,16 +39,15 @@ media/
 ehthumbs.db
 Thumbs.db
 
-# Virtual environment
-venv/
-env/
-ENV/
-
-# Database
-*.db
-
-# Статические файлы (если собираетесь их обслуживать через веб-сервер)
+# Static files (if collected)
 /staticfiles/
+/media/
 
-# Virtual environment - TN
-TN/
+# Django
+/local_settings.py
+
+# Project specific
+/Ноприз.ico
+/server_manager.bat
+/start_server.vbs
+/stop_server.bat
