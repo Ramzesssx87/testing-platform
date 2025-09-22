@@ -8,6 +8,6 @@ urlpatterns = [
     path('', include('tests.urls')),
 ]
 
-# Добавим обработку медиафайлов в разработке
+# Правильная настройка для обслуживания медиафайлов в разработке
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

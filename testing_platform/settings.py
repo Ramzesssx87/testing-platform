@@ -11,7 +11,30 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
+# Загрузка переменных окружения из .env файла
+load_dotenv()
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+
+def get_env_variable(var_name, default=None):
+    """Получить переменную окружения или вернуть исключение."""
+    try:
+        return os.environ[var_name]
+    except KeyError:
+        if default is not None:
+            return default
+        error_msg = f"Set the {var_name} environment variable"
+        raise ImproperlyConfigured(error_msg)
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,7 +48,7 @@ SECRET_KEY = 'django-insecure-5pn^+m@ecd6h5cd(f&awhsfb9!a@1zoit8y(-a3f^k@fcee(-2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.0.100', 'localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = ['192.168.0.100', 'localhost', '127.0.0.1', 'xn--80adcd6auacaebk6a.xn--p1ai']
 
 
 # Application definition
@@ -130,9 +153,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Добавим обработку медиафайлов в режиме разработки
-if DEBUG:
-    from django.conf.urls.static import static
-    urlpatterns = [
-        # ... ваши urlpatterns
-    ] + static(MEDIA_URL, document_root=MEDIA_ROOT)
+# В конце settings.py добавьте:
+if not DEBUG:
+    # Настройки для production
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    # Другие production настройки по необходимости
