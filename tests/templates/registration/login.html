@@ -1,37 +1,197 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вход в систему тестирования</title>
-    <!-- остальные метатеги и стили -->
-</head>
-<!-- остальная часть шаблона -->
 {% extends 'base.html' %}
 
 {% block title %}Вход в систему тестирования{% endblock %}
 
-{% block content %}
-<div class="login-form">
-    <h2>Вход в систему тестирования</h2>
-    <form method="post">
-        {% csrf_token %}
-        <div class="form-group">
-            <label for="username">Имя пользователя:</label>
-            <input type="text" id="username" name="username" required>
-        </div>
-        <div class="form-group">
-            <label for="password">Пароль:</label>
-            <input type="password" id="password" name="password" required>
-        </div>
-        {% if form.errors %}
-            <div class="error">Неверное имя пользователя или пароль.</div>
-        {% endif %}
-        <button type="submit">Войти</button>
-    </form>
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+    .login-container {
+        max-width: 400px;
+        margin: 50px auto;
+        padding: 20px;
+    }
     
-    <div class="nav-links">
-        <a href="{% url 'register' %}">Зарегистрироваться</a>
+    .login-card {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .login-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .card-header {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        border-radius: 8px 8px 0 0 !important;
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .card-body {
+        padding: 30px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+    }
+    
+    .form-control {
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+        padding: 12px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+    }
+    
+    .btn {
+        border-radius: 6px;
+        padding: 12px 30px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+        width: 100%;
+        margin-bottom: 15px;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+    }
+    
+    .btn-outline-primary {
+        border: 2px solid #3498db;
+        color: #3498db;
+        background: transparent;
+    }
+    
+    .btn-outline-primary:hover {
+        background: #3498db;
+        color: white;
+        transform: translateY(-1px);
+    }
+    
+    .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .nav-links {
+        text-align: center;
+        margin-top: 20px;
+    }
+    
+    .nav-links a {
+        color: #3498db;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    
+    .nav-links a:hover {
+        text-decoration: underline;
+    }
+    
+    /* Анимации */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .login-card {
+        animation: fadeIn 0.6s ease-out;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="login-container">
+        <div class="card login-card">
+            <div class="card-header">
+                <h2 class="mb-0">🔐 Вход в систему</h2>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="form-group">
+                        <label for="username" class="form-label">Имя пользователя:</label>
+                        <input type="text" id="username" name="username" class="form-control" required 
+                               placeholder="Введите ваше имя пользователя">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password" class="form-label">Пароль:</label>
+                        <input type="password" id="password" name="password" class="form-control" required 
+                               placeholder="Введите ваш пароль">
+                    </div>
+                    
+                    {% if form.errors %}
+                        <div class="error">
+                            <i class="fas fa-exclamation-triangle"></i> Неверное имя пользователя или пароль.
+                        </div>
+                    {% endif %}
+                    
+                    <button type="submit" class="btn btn-primary">Войти</button>
+                </form>
+                
+                <div class="nav-links">
+                    <p>Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Добавляем интерактивность полям формы
+        const inputs = document.querySelectorAll('.form-control');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.classList.add('focused');
+            });
+            
+            input.addEventListener('blur', function() {
+                if (this.value === '') {
+                    this.parentElement.classList.remove('focused');
+                }
+            });
+        });
+        
+        // Автоматическое скрытие ошибок через 5 секунд
+        const errorDiv = document.querySelector('.error');
+        if (errorDiv) {
+            setTimeout(() => {
+                errorDiv.style.opacity = '0';
+                setTimeout(() => errorDiv.remove(), 300);
+            }, 5000);
+        }
+    });
+</script>
 {% endblock %}
