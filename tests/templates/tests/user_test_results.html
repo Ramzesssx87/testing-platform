@@ -1,0 +1,112 @@
+<!-- tests/templates/tests/user_test_results.html -->
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Результаты теста {{ target_user.username }} - {{ test.name }}{% endblock %}
+
+{% block content %}
+<div class="user-test-results-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            Результаты теста: {{ test.name }}
+            <br>
+            <small class="text-muted">Пользователь: {{ target_user.get_full_name|default:target_user.username }}</small>
+        </h1>
+        <a href="{% url 'group_results' %}" class="btn btn-secondary">← Назад к результатам группы</a>
+    </div>
+
+    <div class="test-results">
+        <div class="score mb-4">
+            <h2>Результат: {{ correct_answers }}/{{ total_questions }} ({{ score|floatformat:1 }}%)</h2>
+            <p class="text-muted">
+                Пройдено: {{ attempt.completed_at|date:"d.m.Y H:i" }} |
+                Тип теста: {{ attempt.test_type|yesno:"Экспресс-тест,Обычная тренировка" }}
+            </p>
+        </div>
+
+        <div class="questions-review">
+            <h3>Детализация ответов:</h3>
+            {% for question in questions %}
+            <div class="question-item {% if question.id|stringformat:'s' in user_answers %}answered{% else %}not-answered{% endif %}">
+                <div class="question-text">
+                    <strong>Вопрос {{ question.question_number }}:</strong> {{ question.question_text }}
+                </div>
+                
+                <div class="correct-answer">
+                    <strong>Правильные ответы:</strong>
+                    {% for answer in question.correct_answer|split:"," %}
+                        <span class="correct-option">{{ question.answer_options|get_item:answer }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="user-answer">
+                    <strong>Ответы пользователя:</strong>
+                    {% with user_answer=user_answers|get_item:question.id|stringformat:'s' %}
+                        {% if user_answer %}
+                            {% for answer in user_answer %}
+                                <span class="user-option {% if answer in question.correct_answer %}correct{% else %}incorrect{% endif %}">
+                                    {{ question.answer_options|get_item:answer }}
+                                </span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="not-answered">Нет ответа</span>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+
+                <div class="document-reference">
+                    <strong>Ссылка на документ:</strong> {{ question.document_reference }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="actions mt-4">
+            <a href="{% url 'group_results' %}" class="btn btn-secondary">← Назад к результатам группы</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .user-test-results-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    
+    .question-item {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+    }
+    
+    .correct-option {
+        background-color: #dff0d8;
+        padding: 5px;
+        margin: 2px;
+        border-radius: 3px;
+        display: inline-block;
+    }
+    
+    .user-option.correct {
+        background-color: #dff0d8;
+        padding: 5px;
+        margin: 2px;
+        border-radius: 3px;
+        display: inline-block;
+    }
+    
+    .user-option.incorrect {
+        background-color: #f2dede;
+        padding: 5px;
+        margin: 2px;
+        border-radius: 3px;
+        display: inline-block;
+    }
+    
+    .not-answered {
+        color: #a94442;
+        font-style: italic;
+    }
+</style>
+{% endblock %}

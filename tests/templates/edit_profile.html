@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Редактирование профиля{% endblock %}
+
+{% block content %}
+<div class="edit-profile-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>✏️ Редактирование профиля</h1>
+        <a href="{% url 'profile' %}" class="btn btn-secondary">← Назад к профилю</a>
+    </div>
+    
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <h5 class="mb-3">Основная информация</h5>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="id_last_name" class="form-label">Фамилия *</label>
+                                    {{ profile_form.last_name }}
+                                    {% if profile_form.last_name.errors %}
+                                        <div class="text-danger">{{ profile_form.last_name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="id_first_name" class="form-label">Имя *</label>
+                                    {{ profile_form.first_name }}
+                                    {% if profile_form.first_name.errors %}
+                                        <div class="text-danger">{{ profile_form.first_name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="id_patronymic" class="form-label">Отчество</label>
+                                    {{ profile_form.patronymic }}
+                                    {% if profile_form.patronymic.errors %}
+                                        <div class="text-danger">{{ profile_form.patronymic.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h5 class="mb-3 mt-4">Контактная информация</h5>
+                        <div class="mb-3">
+                            <label for="id_email" class="form-label">Email *</label>
+                            {{ user_form.email }}
+                            {% if user_form.email.errors %}
+                                <div class="text-danger">{{ user_form.email.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <h5 class="mb-3 mt-4">Служебная информация</h5>
+                        <div class="mb-3">
+                            <label for="id_department_code" class="form-label">Код подразделения</label>
+                            {{ profile_form.department_code }}
+                            {% if profile_form.department_code.errors %}
+                                <div class="text-danger">{{ profile_form.department_code.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">{{ profile_form.department_code.help_text }}</div>
+                        </div>
+                        
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                            <a href="{% url 'profile' %}" class="btn btn-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .edit-profile-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .form-control:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+    }
+    
+    .btn-secondary {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    h5 {
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 5px;
+    }
+</style>
+{% endblock %}

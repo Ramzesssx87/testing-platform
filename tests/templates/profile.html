@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}Личный кабинет - {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>👤 Личный кабинет</h1>
+        <a href="{% url 'test_selection' %}" class="btn btn-secondary">← Назад к тестам</a>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>👤 Профиль пользователя</h5>
+                </div>
+                <div class="card-body">
+                    <div class="user-info">
+                        <p><strong>ФИО:</strong> {{ user.profile.get_full_name|default:"Не указано" }}</p>
+                        <p><strong>Краткое ФИО:</strong> {{ user.profile.get_short_name }}</p>
+                        <p><strong>Имя пользователя:</strong> {{ user.username }}</p>
+                        <p><strong>Email:</strong> {{ user.email|default:"Не указан" }}</p>
+                        <p><strong>Код подразделения:</strong> {{ user.profile.department_code|default:"Не указан" }}</p>
+                        {% if user.profile.department_code %}
+                            <p><strong>Иерархия подразделения:</strong> {{ user.profile.get_department_hierarchy }}</p>
+                        {% endif %}
+                        <p><strong>Дата регистрации:</strong> {{ user.date_joined|date:"d.m.Y" }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>📊 Быстрая статистика</h5>
+                </div>
+                <div class="card-body">
+                    <div class="stats-info">
+                        <p><strong>Завершено тренировок:</strong> {{ completed_tests }}</p>
+                        <p><strong>Экспресс-тестов:</strong> {{ express_tests }}</p>
+                        <p><strong>Средний результат:</strong> {{ average_score }}%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>⚡ Действия</h5>
+                </div>
+                <div class="card-body">
+                    <div class="action-buttons">
+                        <a href="{% url 'edit_profile' %}" class="btn btn-primary mb-2">
+                            ✏️ Редактировать профиль
+                        </a>
+                        <a href="{% url 'statistics' %}" class="btn btn-info mb-2">
+                            📈 Посмотреть статистику
+                        </a>
+                        
+                        {% if user.profile.can_view_other_results %}
+                        <a href="{% url 'group_results' %}" class="btn btn-warning mb-2">
+                            👥 Результаты группы
+                        </a>
+                        {% endif %}
+                        
+                        <a href="{% url 'test_selection' %}" class="btn btn-success mb-2">
+                            🎯 Начать новый тест
+                        </a>
+                    </div>
+                    
+                    <div class="recent-activity mt-4">
+                        <h6>Недавняя активность:</h6>
+                        {% with recent_tests=user.usertestprogress_set.all|slice:":5" %}
+                            {% if recent_tests %}
+                                <ul class="list-group">
+                                    {% for test in recent_tests %}
+                                    <li class="list-group-item">
+                                        {{ test.test.name }} 
+                                        <span class="badge {% if test.completed %}bg-success{% else %}bg-warning{% endif %} float-end">
+                                            {{ test.completed|yesno:"Завершен,В процессе" }}
+                                        </span>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="text-muted">У вас пока нет активности.</p>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .profile-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .user-info p {
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .user-info p:last-child {
+        border-bottom: none;
+    }
+    
+    .stats-info p {
+        margin-bottom: 8px;
+    }
+    
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .action-buttons .btn {
+        text-align: left;
+        padding: 12px 15px;
+    }
+    
+    .btn-secondary {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    @media (max-width: 768px) {
+        .action-buttons {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,377 @@
+{% extends 'base.html' %}
+
+{% block title %}Статистика тестов{% endblock %}
+
+{% block content %}
+<div class="statistics-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>📈 Статистика тестов</h1>
+        <a href="{% url 'profile' %}" class="btn btn-secondary">← Назад к профилю</a>
+    </div>
+    
+    <!-- Карточки статистики -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ total_trainings }}</h5>
+                    <p class="card-text">Всего завершено тренировок</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ average_training_last_10 }}%</h5>
+                    <p class="card-text">Средний результат за последние 10 тренировок</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ total_express_tests }}</h5>
+                    <p class="card-text">Завершено Экспресс Тестов</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ average_express_last_10 }}%</h5>
+                    <p class="card-text">Средний результат за последние 10 Экспресс тестов</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Результаты тренировок -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5>📋 Результаты тренировок</h5>
+            <div>
+                {% if has_more_trainings %}
+                <button class="btn btn-sm btn-outline-secondary me-2" onclick="toggleTrainingView()">
+                    <span id="trainingToggleText">Показать все</span>
+                </button>
+                {% endif %}
+                <span class="badge bg-primary">Всего: {{ total_trainings }}</span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="trainingLimitedView">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Тест</th>
+                                <th>Дата прохождения</th>
+                                <th>Результат</th>
+                                <th>Правильные ответы</th>
+                                <th>Диапазон вопросов</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for test in training_tests_limited %}
+                            <tr>
+                                <td>{{ test.test.name }}</td>
+                                <td>{{ test.completed_at|date:"d.m.Y H:i" }}</td>
+                                <td>
+                                    <span class="badge {% if test.score >= 80 %}bg-success{% elif test.score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                        {{ test.score|floatformat:1 }}%
+                                    </span>
+                                </td>
+                                <td>{{ test.correct_answers_count }}/{{ test.total_questions_count }}</td>
+                                <td>
+                                    {% if test.start_question and test.end_question %}
+                                        Вопросы {{ test.start_question }}-{{ test.end_question }}
+                                    {% elif test.start_question %}
+                                        С вопроса {{ test.start_question }}
+                                    {% elif test.end_question %}
+                                        До вопроса {{ test.end_question }}
+                                    {% else %}
+                                        Все вопросы
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'test_results' test.test.id %}?attempt_id={{ test.attempt_id }}" class="btn btn-sm btn-outline-primary">
+                                        Детали
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <p class="text-muted">У вас пока нет завершенных тренировок.</p>
+                                    <a href="{% url 'test_selection' %}" class="btn btn-primary">Начать первую тренировку</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if has_more_trainings %}
+                <div class="text-center mt-3">
+                    <small class="text-muted">Показано последних 10 тренировок из {{ total_trainings }}</small>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div id="trainingFullView" style="display: none;">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Тест</th>
+                                <th>Дата прохождения</th>
+                                <th>Результат</th>
+                                <th>Правильные ответы</th>
+                                <th>Диапазон вопросов</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for test in training_tests %}
+                            <tr>
+                                <td>{{ test.test.name }}</td>
+                                <td>{{ test.completed_at|date:"d.m.Y H:i" }}</td>
+                                <td>
+                                    <span class="badge {% if test.score >= 80 %}bg-success{% elif test.score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                        {{ test.score|floatformat:1 }}%
+                                    </span>
+                                </td>
+                                <td>{{ test.correct_answers_count }}/{{ test.total_questions_count }}</td>
+                                <td>
+                                    {% if test.start_question and test.end_question %}
+                                        Вопросы {{ test.start_question }}-{{ test.end_question }}
+                                    {% elif test.start_question %}
+                                        С вопроса {{ test.start_question }}
+                                    {% elif test.end_question %}
+                                        До вопроса {{ test.end_question }}
+                                    {% else %}
+                                        Все вопросы
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'test_results' test.test.id %}?attempt_id={{ test.attempt_id }}" class="btn btn-sm btn-outline-primary">
+                                        Детали
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <p class="text-muted">У вас пока нет завершенных тренировок.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if has_more_trainings %}
+                <div class="text-center mt-3">
+                    <small class="text-muted">Показано всех {{ total_trainings }} тренировок</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Результаты экспресс-тестов -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5>⚡ Результаты экспресс-тестов</h5>
+            <div>
+                {% if has_more_express %}
+                <button class="btn btn-sm btn-outline-secondary me-2" onclick="toggleExpressView()">
+                    <span id="expressToggleText">Показать все</span>
+                </button>
+                {% endif %}
+                <span class="badge bg-primary">Всего: {{ total_express_tests }}</span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="expressLimitedView">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Тест</th>
+                                <th>Дата прохождения</th>
+                                <th>Результат</th>
+                                <th>Правильные ответы</th>
+                                <th>Количество вопросов</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for test in express_tests_limited %}
+                            <tr>
+                                <td>{{ test.test.name }}</td>
+                                <td>{{ test.completed_at|date:"d.m.Y H:i" }}</td>
+                                <td>
+                                    <span class="badge {% if test.score >= 80 %}bg-success{% elif test.score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                        {{ test.score|floatformat:1 }}%
+                                    </span>
+                                </td>
+                                <td>{{ test.correct_answers_count }}/{{ test.total_questions_count }}</td>
+                                <td>{{ test.total_questions_count }} вопросов</td>
+                                <td>
+                                    <a href="{% url 'test_results' test.test.id %}?attempt_id={{ test.attempt_id }}" class="btn btn-sm btn-outline-primary">
+                                        Детали
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <p class="text-muted">У вас пока нет завершенных экспресс-тестов.</p>
+                                    <a href="{% url 'test_selection' %}" class="btn btn-primary">Пройти первый экспресс-тест</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if has_more_express %}
+                <div class="text-center mt-3">
+                    <small class="text-muted">Показано последних 10 экспресс-тестов из {{ total_express_tests }}</small>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div id="expressFullView" style="display: none;">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Тест</th>
+                                <th>Дата прохождения</th>
+                                <th>Результат</th>
+                                <th>Правильные ответы</th>
+                                <th>Количество вопросов</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for test in express_tests %}
+                            <tr>
+                                <td>{{ test.test.name }}</td>
+                                <td>{{ test.completed_at|date:"d.m.Y H:i" }}</td>
+                                <td>
+                                    <span class="badge {% if test.score >= 80 %}bg-success{% elif test.score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                        {{ test.score|floatformat:1 }}%
+                                    </span>
+                                </td>
+                                <td>{{ test.correct_answers_count }}/{{ test.total_questions_count }}</td>
+                                <td>{{ test.total_questions_count }} вопросов</td>
+                                <td>
+                                    <a href="{% url 'test_results' test.test.id %}?attempt_id={{ test.attempt_id }}" class="btn btn-sm btn-outline-primary">
+                                        Детали
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <p class="text-muted">У вас пока нет завершенных экспресс-тестов.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if has_more_express %}
+                <div class="text-center mt-3">
+                    <small class="text-muted">Показано всех {{ total_express_tests }} экспресс-тестов</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Кнопка сброса статистики внизу справа -->
+    <div class="d-flex justify-content-end mt-4">
+        <form method="post" action="{% url 'reset_statistics' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger" 
+                    onclick="return confirm('Вы уверены, что хотите сбросить всю статистику? Это действие нельзя отменить.')">
+                🗑️ Сбросить статистику
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+    .statistics-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .card {
+        margin-bottom: 20px;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+    }
+    
+    .btn-secondary {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    .badge {
+        font-size: 0.8em;
+    }
+</style>
+
+<script>
+    function toggleTrainingView() {
+        const limitedView = document.getElementById('trainingLimitedView');
+        const fullView = document.getElementById('trainingFullView');
+        const toggleText = document.getElementById('trainingToggleText');
+        
+        if (limitedView.style.display === 'none') {
+            limitedView.style.display = 'block';
+            fullView.style.display = 'none';
+            toggleText.textContent = 'Показать все';
+        } else {
+            limitedView.style.display = 'none';
+            fullView.style.display = 'block';
+            toggleText.textContent = 'Показать последние 10';
+        }
+    }
+    
+    function toggleExpressView() {
+        const limitedView = document.getElementById('expressLimitedView');
+        const fullView = document.getElementById('expressFullView');
+        const toggleText = document.getElementById('expressToggleText');
+        
+        if (limitedView.style.display === 'none') {
+            limitedView.style.display = 'block';
+            fullView.style.display = 'none';
+            toggleText.textContent = 'Показать все';
+        } else {
+            limitedView.style.display = 'none';
+            fullView.style.display = 'block';
+            toggleText.textContent = 'Показать последние 10';
+        }
+    }
+    
+    // Инициализация при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        // По умолчанию показываем ограниченное представление (последние 10)
+        document.getElementById('trainingLimitedView').style.display = 'block';
+        document.getElementById('trainingFullView').style.display = 'none';
+        document.getElementById('expressLimitedView').style.display = 'block';
+        document.getElementById('expressFullView').style.display = 'none';
+        
+        // Устанавливаем правильный текст для кнопок переключения
+        document.getElementById('trainingToggleText').textContent = 'Показать все';
+        document.getElementById('expressToggleText').textContent = 'Показать все';
+    });
+</script>
+{% endblock %}

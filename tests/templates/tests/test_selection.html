@@ -3,176 +3,359 @@
 
 {% block title %}Выбор теста{% endblock %}
 
-{% block content %}
-    <!-- Отображение сообщений -->
-    {% if messages %}
-    <div class="messages">
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}">
-            {{ message }}
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+    .card {
+        margin-bottom: 20px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        padding: 15px 20px;
+    }
+    
+    .card-body {
+        padding: 20px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #495057;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+    }
+    
+    .btn {
+        border-radius: 6px;
+        padding: 10px 20px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    
+    .btn-primary {
+        background-color: #3498db;
+    }
+    
+    .btn-primary:hover {
+        background-color: #2980b9;
+        transform: translateY(-1px);
+    }
+    
+    .btn-warning {
+        background-color: #f39c12;
+        color: white;
+    }
+    
+    .btn-warning:hover {
+        background-color: #e67e22;
+        transform: translateY(-1px);
+    }
+    
+    .btn-success {
+        background-color: #27ae60;
+    }
+    
+    .btn-danger {
+        background-color: #e74c3c;
+        border-color: #e74c3c;
+    }
 
-    <h1>Выберите тест</h1>
+    .btn-danger:hover {
+        background-color: #c0392b;
+        border-color: #c0392b;
+        transform: translateY(-1px);
+    }
+    
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    
+    .badge {
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 12px;
+    }
+    
+    .progress {
+        height: 10px;
+        border-radius: 5px;
+        background-color: #e9ecef;
+    }
+    
+    .progress-bar {
+        background-color: #3498db;
+        border-radius: 5px;
+    }
+    
+    .alert {
+        border-radius: 6px;
+        border: none;
+        padding: 12px 16px;
+    }
+    
+    .nav-buttons {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    
+    .test-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .test-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    /* Адаптивность для мобильных устройств */
+    @media (max-width: 768px) {
+        .card-body {
+            padding: 15px;
+        }
+        
+        .btn-group {
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .nav-buttons {
+            flex-direction: column;
+        }
+        
+        .nav-buttons a {
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Выберите тест</h1>
     
     <!-- Кнопки для администратора -->
     {% if user.is_staff %}
-    <div style="text-align: right; margin-bottom: 20px;">
-        <a href="{% url 'upload_excel' %}" class="upload-excel-btn" 
-           style="background-color: #28a745; color: white; padding: 10px 15px; 
-                  text-decoration: none; border-radius: 4px; display: inline-block;">
+    <div class="nav-buttons">
+        <a href="{% url 'upload_excel' %}" class="btn btn-success">
             📤 Загрузить тест из Excel
         </a>
-        <a href="{% url 'manage_tests' %}" style="background-color: #3498db; color: white; padding: 10px 15px; 
-                  text-decoration: none; border-radius: 4px; display: inline-block; margin-left: 10px;">
+        <a href="{% url 'manage_tests' %}" class="btn btn-primary">
             ⚙️ Управление тестами
         </a>
     </div>
     {% endif %}
     
-    <!-- Форма выбора теста -->
-    <div class="test-form">
-        <form method="post">
-            {% csrf_token %}
-            <div>
-                <label for="id_test">Тест:</label>
-                {{ form.test }}
-            </div>
-            <div class="range-fields">
-                <label>Диапазон вопросов:</label>
-                <div style="display: flex; gap: 10px;">
-                    {{ form.start_question }}
-                    <span style="line-height: 40px;">по</span>
-                    {{ form.end_question }}
+    <!-- Форма для обычной тренировки -->
+    <div class="card test-card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">📚 Обычная тренировка</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="normal">
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="{{ normal_form.test.id_for_label }}" class="form-label">{{ normal_form.test.label }}</label>
+                        {{ normal_form.test }}
+                        {% if normal_form.test.errors %}
+                            <div class="text-danger small mt-1">{{ normal_form.test.errors }}</div>
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
-            {% if form.errors %}
-                <div class="error">{{ form.non_field_errors }}</div>
-            {% endif %}
-            <button type="submit">Начать тест</button>
-        </form>
+                
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label for="{{ normal_form.start_question.id_for_label }}" class="form-label">{{ normal_form.start_question.label }}</label>
+                        {{ normal_form.start_question }}
+                        {% if normal_form.start_question.errors %}
+                            <div class="text-danger small mt-1">{{ normal_form.start_question.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <label for="{{ normal_form.end_question.id_for_label }}" class="form-label">{{ normal_form.end_question.label }}</label>
+                        {{ normal_form.end_question }}
+                        {% if normal_form.end_question.errors %}
+                            <div class="text-danger small mt-1">{{ normal_form.end_question.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% if normal_form.non_field_errors %}
+                    <div class="alert alert-danger">{{ normal_form.non_field_errors }}</div>
+                {% endif %}
+                
+                <button type="submit" name="normal_test" class="btn btn-primary">Начать тренировку</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Форма для экспресс-теста -->
+    <div class="card test-card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">⚡ Экспресс-тест</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="express">
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="{{ express_form.test.id_for_label }}" class="form-label">{{ express_form.test.label }}</label>
+                        {{ express_form.test }}
+                        {% if express_form.test.errors %}
+                            <div class="text-danger small mt-1">{{ express_form.test.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ express_form.question_count.id_for_label }}" class="form-label">{{ express_form.question_count.label }}</label>
+                        {{ express_form.question_count }}
+                        {% if express_form.question_count.errors %}
+                            <div class="text-danger small mt-1">{{ express_form.question_count.errors }}</div>
+                        {% endif %}
+                        <div class="form-text">Случайный выбор вопросов</div>
+                    </div>
+                </div>
+                
+                {% if express_form.non_field_errors %}
+                    <div class="alert alert-danger">{{ express_form.non_field_errors }}</div>
+                {% endif %}
+                
+                <button type="submit" name="express_test" class="btn btn-warning">Начать экспресс-тест</button>
+            </form>
+        </div>
     </div>
     
     <!-- Список текущих тестов пользователя -->
-    <div class="progress-list">
-        <h2>Ваши текущие тесты</h2>
+    {% if progress_info %}
+    <div class="progress-list mt-4">
+        <h2 class="mb-3">Ваши текущие тесты</h2>
+        
         {% for item in progress_info %}
             {% with progress=item.progress %}
-            <div class="progress-item">
-                <h3>{{ progress.test.name }}</h3>
-                
-                <!-- Информация о диапазоне вопросов -->
-                <div class="question-range">
-                    {% if progress.start_question and progress.end_question %}
-                        Вопросы: с {{ progress.start_question }} по {{ progress.end_question }}
-                    {% elif progress.start_question %}
-                        Вопросы: с {{ progress.start_question }} по последний
-                    {% elif progress.end_question %}
-                        Вопросы: с первого по {{ progress.end_question }}
-                    {% else %}
-                        Все вопросы теста
-                    {% endif %}
-                </div>
-                
-                <div class="test-stats">
-                    <span>
-                        {% if not progress.completed %}
-                            Текущий вопрос: {{ progress.current_question.question_number }}
-                        {% else %}
-                            Тест завершен
-                        {% endif %}
-                    </span>
-                </div>
-                
-                <div class="progress-info">
-                    <p>Статус: {{ progress.completed|yesno:"Завершен,В процессе" }}</p>
-                    <p>Прогресс: 
-                        {{ item.answered_in_range }}/{{ item.total_in_range }} вопросов
-                    </p>
-                </div>
-                
-                <div class="nav-links">
-                    {% if not progress.completed %}
-                        <a href="{% url 'test_progress' progress.test.id %}">
-                            Продолжить тест
-                        </a>
-                    {% else %}
-                        <a href="{% url 'test_results' progress.test.id %}">
-                            Посмотреть результаты
-                        </a>
-                    {% endif %}
-                    
-                    <a href="#" onclick="return confirmReset({{ progress.test.id }})" style="background-color: #dc3545;">
-                        Сбросить прогресс
-                    </a>
+            <div class="card test-card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1 me-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <h5 class="card-title mb-0 me-2">{{ progress.test.name }}</h5>
+                                {% if progress.test_type == 'express' %}
+                                    <span class="badge bg-warning">Экспресс</span>
+                                {% else %}
+                                    <span class="badge bg-primary">Обычный</span>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Информация о диапазоне вопросов -->
+                            <div class="text-muted mb-2">
+                                {% if progress.test_type == 'express' %}
+                                    Случайные вопросы: {{ item.answered_in_range }} из {{ item.total_in_range }}
+                                {% elif progress.start_question and progress.end_question %}
+                                    Вопросы: с {{ progress.start_question }} по {{ progress.end_question }}
+                                {% elif progress.start_question %}
+                                    Вопросы: с {{ progress.start_question }} по последний
+                                {% elif progress.end_question %}
+                                    Вопросы: с первого по {{ progress.end_question }}
+                                {% else %}
+                                    Все вопросы теста
+                                {% endif %}
+                            </div>
+                            
+                            <div class="progress mb-2">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {% widthratio item.answered_in_range item.total_in_range 100 %}%"
+                                     aria-valuenow="{{ item.answered_in_range }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="{{ item.total_in_range }}">
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Прогресс: {{ item.answered_in_range }}/{{ item.total_in_range }}</span>
+                                <span class="badge {% if progress.completed %}bg-success{% else %}bg-info{% endif %}">
+                                    {{ progress.completed|yesno:"Завершен,В процессе" }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="btn-group-vertical btn-group-sm">
+                            {% if not progress.completed %}
+                                <a href="{% url 'test_progress' progress.test.id %}" class="btn btn-primary">
+                                    Продолжить
+                                </a>
+                            {% else %}
+                                <a href="{% url 'test_results' progress.test.id %}" class="btn btn-success">
+                                    Результаты
+                                </a>
+                            {% endif %}
+                            
+                            <!-- ЗАМЕНЯЕМ кнопку "Сбросить" на "Удалить" -->
+                            <a href="{% url 'delete_test_progress' progress.test.id %}?attempt_id={{ progress.attempt_id }}" 
+                               class="btn btn-danger"
+                               onclick="return confirm('Вы уверены, что хотите удалить прогресс по тесту \"{{ progress.test.name }}\"? Это действие нельзя отменить.')">
+                                🗑️ Удалить
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
             {% endwith %}
-        {% empty %}
-            <p>У вас нет активных тестов.</p>
         {% endfor %}
     </div>
-    
-    <div class="nav-links">
-        <a href="{% url 'logout' %}">Выйти</a>
-    </div>
-
-    <!-- Стили для сообщений -->
-    <style>
-        .messages {
-            margin-bottom: 20px;
-        }
-        
-        .alert {
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-        }
-        
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .alert-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .alert-info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-    </style>
+    {% else %}
+        <div class="alert alert-info text-center">
+            У вас нет активных тестов. Выберите тест выше, чтобы начать тренировку.
+        </div>
+    {% endif %}
+</div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-    function confirmReset(testId) {
-        if (confirm("Вы уверены, что хотите сбросить прогресс? Все ваши ответы будут удалены.")) {
-            // Создаем скрытую форму для отправки POST запроса
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/test/' + testId + '/reset/';
-            
-            // Добавляем CSRF токен
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrfmiddlewaretoken';
-            csrfInput.value = csrfToken;
-            form.appendChild(csrfInput);
-            
-            // Добавляем форму в документ и отправляем
-            document.body.appendChild(form);
-            form.submit();
-        }
-        return false;
-    }
+    // Автоматическое скрытие сообщений через 5 секунд
+    document.addEventListener('DOMContentLoaded', function() {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            setTimeout(function() {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }, 5000);
+        });
+        
+        // Улучшение отображения форм
+        const selects = document.querySelectorAll('select');
+        selects.forEach(function(select) {
+            select.classList.add('form-select');
+        });
+        
+        const inputs = document.querySelectorAll('input[type="text"], input[type="number"]');
+        inputs.forEach(function(input) {
+            input.classList.add('form-control');
+        });
+    });
 </script>
 {% endblock %}

@@ -13,7 +13,7 @@
         }
         .progress { 
             height: 100%; background-color: #4CAF50; border-radius: 10px; 
-            width: {{ progress_percent }}%; 
+            width: {% widthratio question_number total_questions 100 %}%; 
         }
         .question { margin-bottom: 20px; }
         .options label { display: block; margin: 10px 0; }
@@ -26,16 +26,41 @@
             text-decoration: none; border-radius: 4px; display: inline-block; 
         }
         .buttons-container { margin-top: 20px; }
+        .test-info {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .badge {
+            background-color: #ffc107;
+            color: #212529;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>{{ test.name }}</h1>
+        <h1>
+            {{ test.name }}
+            {% if test_type == 'express' %}
+                <span class="badge">Экспресс-тест</span>
+            {% endif %}
+        </h1>
+        
+        <div class="test-info">
+            <p>Вопрос {{ question_number }} из {{ total_questions }}</p>
+            {% if test_type == 'express' %}
+                <p><small>Выбранные вопросы: {{ total_questions }} из {{ test.questions.count }} доступных</small></p>
+            {% endif %}
+        </div>
         
         <div class="progress-bar">
             <div class="progress"></div>
         </div>
-        <p>Вопрос {{ question_number }} из {{ total_questions }}</p>
         
         <div class="question">
             <h2>{{ question.question_text }}</h2>
