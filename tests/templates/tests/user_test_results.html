@@ -26,10 +26,11 @@
 
         <div class="questions-review">
             <h3>Детализация ответов:</h3>
-            {% for question in questions %}
+            {% for item in questions_with_order %}
+            {% with question=item.question %}
             <div class="question-item {% if question.id|stringformat:'s' in user_answers %}answered{% else %}not-answered{% endif %}">
                 <div class="question-text">
-                    <strong>Вопрос {{ question.question_number }}:</strong> {{ question.question_text }}
+                    <strong>Вопрос {{ item.order_number }}:</strong> {{ question.question_text }}
                 </div>
                 
                 <div class="correct-answer">
@@ -58,6 +59,7 @@
                     <strong>Ссылка на документ:</strong> {{ question.document_reference }}
                 </div>
             </div>
+            {% endwith %}
             {% endfor %}
         </div>
 

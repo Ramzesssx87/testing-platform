@@ -152,7 +152,8 @@ def test_selection(request):
                     answers={},
                     start_question=1,
                     end_question=question_count,
-                    test_type='express'
+                    test_type='express',
+                    question_order=[q.id for q in random_questions]  # Сохраняем порядок вопросов
                 )
                 
                 # Сохраняем ID попытки в сессии
@@ -316,7 +317,7 @@ def test_progress(request, test_id):
         'test_type': test_type
     })
 
-login_required
+@login_required
 def test_results(request, test_id):
     test = get_object_or_404(Test, id=test_id)
     
@@ -333,37 +334,68 @@ def test_results(request, test_id):
         messages.error(request, 'Результаты теста не найдены.')
         return redirect('test_selection')
     
-    # Получаем вопросы на основе типа теста и диапазона
+    # Получаем вопросы на основе типа теста
     if progress.test_type == 'express':
-        # Для экспресс-теста используем сохраненный диапазон
-        questions_query = test.questions.all()
+        # Для экспресс-теста используем сохраненный порядок вопросов из сессии
+        question_range = request.session.get('question_range', {})
+        question_ids = question_range.get('question_ids', [])
         
-        if progress.start_question:
-            questions_query = questions_query.filter(question_number__gte=progress.start_question)
-        
-        if progress.end_question:
-            questions_query = questions_query.filter(question_number__lte=progress.end_question)
-        
-        questions = list(questions_query)
-        total_questions = len(questions)
+        if question_ids:
+            # Получаем вопросы в том порядке, в котором они были в тесте
+            questions = []
+            for q_id in question_ids:
+                try:
+                    question = Question.objects.get(id=q_id, test=test)
+                    questions.append(question)
+                except Question.DoesNotExist:
+                    continue
+            total_questions = len(questions)
+        else:
+            # Если в сессии нет данных, используем сохраненный порядок из базы
+            if progress.question_order:
+                question_ids = progress.question_order
+                questions = []
+                for q_id in question_ids:
+                    try:
+                        question = Question.objects.get(id=q_id, test=test)
+                        questions.append(question)
+                    except Question.DoesNotExist:
+                        continue
+                total_questions = len(questions)
+            else:
+                # Если порядок не сохранен, используем вопросы по порядку номеров
+                questions_query = test.questions.all()
+                if progress.start_question:
+                    questions_query = questions_query.filter(question_number__gte=progress.start_question)
+                if progress.end_question:
+                    questions_query = questions_query.filter(question_number__lte=progress.end_question)
+                questions = list(questions_query.order_by('question_number'))
+                total_questions = len(questions)
     else:
         # Для обычного теста используем реальный диапазон из прогресса
         questions_query = test.questions.all()
-        
         if progress.start_question:
             questions_query = questions_query.filter(question_number__gte=progress.start_question)
-        
         if progress.end_question:
             questions_query = questions_query.filter(question_number__lte=progress.end_question)
-        
-        questions = list(questions_query)
+        questions = list(questions_query.order_by('question_number'))
         total_questions = len(questions)
+    
+    # Создаем список вопросов с их порядковыми номерами в тесте
+    questions_with_order = []
+    for i, question in enumerate(questions, 1):
+        questions_with_order.append({
+            'question': question,
+            'order_number': i,  # Порядковый номер в тесте (1, 2, 3...)
+            'original_number': question.question_number  # Оригинальный номер вопроса (119, 418...)
+        })
     
     # Считаем правильные ответы
     correct_answers = 0
     user_answers = {}
     
-    for question in questions:
+    for item in questions_with_order:
+        question = item['question']
         user_answer = progress.answers.get(str(question.id), [])
         user_answers[str(question.id)] = user_answer
         correct_answers_list = [int(ans.strip()) for ans in question.correct_answer.split(',')]
@@ -387,7 +419,7 @@ def test_results(request, test_id):
         'correct_answers': correct_answers,
         'total_questions': total_questions,
         'score': score,
-        'questions': questions,
+        'questions_with_order': questions_with_order,  # Передаем вопросы с порядковыми номерами
         'user_answers': user_answers,
         'test_type': progress.test_type
     })
@@ -979,37 +1011,54 @@ def user_test_results(request, user_id, test_id):
         
         attempt = attempts.first()
     
-    # Определяем вопросы на основе типа теста и диапазона
+    # Определяем вопросы на основе типа теста
     if attempt.test_type == 'express':
-        # Для экспресс-теста используем сохраненный диапазон
-        questions_query = test.questions.all()
-        
-        if attempt.start_question:
-            questions_query = questions_query.filter(question_number__gte=attempt.start_question)
-        
-        if attempt.end_question:
-            questions_query = questions_query.filter(question_number__lte=attempt.end_question)
-        
-        questions = list(questions_query.order_by('question_number'))
-        total_questions = len(questions)
+        # Для экспресс-теста используем сохраненный порядок вопросов
+        if attempt.question_order:
+            # Получаем вопросы в сохраненном порядке
+            question_ids = attempt.question_order
+            questions = []
+            for q_id in question_ids:
+                try:
+                    question = Question.objects.get(id=q_id, test=test)
+                    questions.append(question)
+                except Question.DoesNotExist:
+                    continue
+            total_questions = len(questions)
+        else:
+            # Если порядок не сохранен, используем вопросы по порядку номеров
+            questions_query = test.questions.all()
+            if attempt.start_question:
+                questions_query = questions_query.filter(question_number__gte=attempt.start_question)
+            if attempt.end_question:
+                questions_query = questions_query.filter(question_number__lte=attempt.end_question)
+            questions = list(questions_query.order_by('question_number'))
+            total_questions = len(questions)
     else:
         # Для обычного теста используем реальный диапазон из прогресса
         questions_query = test.questions.all()
-        
         if attempt.start_question:
             questions_query = questions_query.filter(question_number__gte=attempt.start_question)
-        
         if attempt.end_question:
             questions_query = questions_query.filter(question_number__lte=attempt.end_question)
-        
         questions = list(questions_query.order_by('question_number'))
         total_questions = len(questions)
+    
+    # Создаем список вопросов с их порядковыми номерами в тесте
+    questions_with_order = []
+    for i, question in enumerate(questions, 1):
+        questions_with_order.append({
+            'question': question,
+            'order_number': i,  # Порядковый номер в тесте (1, 2, 3...)
+            'original_number': question.question_number  # Оригинальный номер вопроса (345, 245, 23...)
+        })
     
     # Считаем правильные ответы для этой попытки
     correct_answers = 0
     user_answers = {}
     
-    for question in questions:
+    for item in questions_with_order:
+        question = item['question']
         user_answer = attempt.answers.get(str(question.id), [])
         user_answers[str(question.id)] = user_answer
         correct_answers_list = [int(ans.strip()) for ans in question.correct_answer.split(',')]
@@ -1022,7 +1071,7 @@ def user_test_results(request, user_id, test_id):
         'target_user': target_user,
         'test': test,
         'attempt': attempt,
-        'questions': questions,
+        'questions_with_order': questions_with_order,
         'user_answers': user_answers,
         'correct_answers': correct_answers,
         'total_questions': total_questions,

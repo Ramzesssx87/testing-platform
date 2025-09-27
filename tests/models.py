@@ -189,6 +189,12 @@ class UserTestProgress(models.Model):
     total_questions_count = models.IntegerField(null=True, blank=True, verbose_name="Общее количество вопросов")
     completed_at = models.DateTimeField(null=True, blank=True, verbose_name="Время завершения теста")
     
+     # Новое поле для хранения порядка вопросов в экспресс-тесте
+    question_order = models.JSONField(
+        null=True, 
+        blank=True, 
+        verbose_name="Порядок вопросов в экспресс-тесте"
+    )
     # Уникальный идентификатор попытки
     attempt_id = models.CharField(max_length=100, unique=True, blank=True, null=True)
     
