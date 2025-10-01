@@ -7,64 +7,54 @@ from django.utils import timezone
 class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(required=True, label="Email")
     
-    # Убираем старое поле department_code и добавляем новые поля для ФИО
-    last_name = forms.CharField(
-        max_length=100, 
-        required=True, 
-        label="Фамилия",
-        widget=forms.TextInput(attrs={'placeholder': 'Введите вашу фамилию'})
-    )
-    first_name = forms.CharField(
-        max_length=100, 
-        required=True, 
-        label="Имя",
-        widget=forms.TextInput(attrs={'placeholder': 'Введите ваше имя'})
-    )
-    patronymic = forms.CharField(
-        max_length=100, 
-        required=False, 
-        label="Отчество",
-        widget=forms.TextInput(attrs={'placeholder': 'Введите ваше отчество (необязательно)'})
-    )
-    
-    department_code = forms.CharField(
-        max_length=50, 
-        required=False, 
-        label="Код подразделения",
-        help_text="Формат: Группа-Подгруппа-Подподгруппа (например: 35-1-1). Добавьте 'У' для прав просмотра",
-        widget=forms.TextInput(attrs={'placeholder': 'Например: 35-1-1'})
-    )
-    
+    # Убираем дублирующие поля ФИО - используем стандартные поля User
     class Meta:
         model = User
-        fields = ("username", "email", "last_name", "first_name", "patronymic", "department_code", "password1", "password2")
+        fields = ("username", "email", "first_name", "last_name", "password1", "password2")
+        labels = {
+            'first_name': 'Имя',
+            'last_name': 'Фамилия',
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Добавляем поле отчества и кода подразделения
+        self.fields['patronymic'] = forms.CharField(
+            max_length=100, 
+            required=False, 
+            label="Отчество",
+            widget=forms.TextInput(attrs={'placeholder': 'Введите ваше отчество (необязательно)'})
+        )
+        self.fields['department_code'] = forms.CharField(
+            max_length=50, 
+            required=False, 
+            label="Код подразделения",
+            help_text="Формат: Группа-Подгруппа-Подподгруппа (например: 35-1-1). Добавьте 'У' для прав просмотра",
+            widget=forms.TextInput(attrs={'placeholder': 'Например: 35-1-1'})
+        )
+        
+        # Настраиваем обязательные поля
+        self.fields['first_name'].required = True
+        self.fields['last_name'].required = True
+        self.fields['first_name'].widget.attrs.update({'placeholder': 'Введите ваше имя'})
+        self.fields['last_name'].widget.attrs.update({'placeholder': 'Введите вашу фамилию'})
     
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data["email"]
-        # Сохраняем стандартные поля User
-        user.first_name = self.cleaned_data["first_name"]
-        user.last_name = self.cleaned_data["last_name"]
         
         if commit:
             user.save()
             # Сохраняем дополнительные поля в профиль
-            if hasattr(user, 'profile'):
-                user.profile.patronymic = self.cleaned_data["patronymic"]
-                user.profile.department_code = self.cleaned_data["department_code"]
-                user.profile.save()
-            else:
-                UserProfile.objects.create(
-                    user=user, 
-                    patronymic=self.cleaned_data["patronymic"],
-                    department_code=self.cleaned_data["department_code"],
-                    first_name=self.cleaned_data["first_name"],
-                    last_name=self.cleaned_data["last_name"]
-                )
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            profile.patronymic = self.cleaned_data.get("patronymic", "")
+            profile.department_code = self.cleaned_data.get("department_code", "")
+            profile.save()
+            
         return user
 
 class UserProfileForm(forms.ModelForm):
-    # Добавляем поля ФИО в форму профиля
+    # Используем стандартные поля User для ФИО
     last_name = forms.CharField(
         max_length=100, 
         required=True, 
@@ -77,10 +67,15 @@ class UserProfileForm(forms.ModelForm):
         label="Имя",
         widget=forms.TextInput(attrs={'placeholder': 'Введите ваше имя'})
     )
+    email = forms.EmailField(
+        required=True,
+        label="Email",
+        widget=forms.EmailInput(attrs={'placeholder': 'Введите ваш email'})
+    )
     
     class Meta:
         model = UserProfile
-        fields = ['last_name', 'first_name', 'patronymic', 'department_code']
+        fields = ['patronymic', 'department_code']
         labels = {
             'patronymic': 'Отчество',
             'department_code': 'Код подразделения',
@@ -92,18 +87,27 @@ class UserProfileForm(forms.ModelForm):
             'patronymic': forms.TextInput(attrs={'placeholder': 'Введите ваше отчество'}),
             'department_code': forms.TextInput(attrs={'placeholder': 'Например: 35-1-1'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Устанавливаем начальные значения из объекта User
+        if self.instance and self.instance.user:
+            self.fields['last_name'].initial = self.instance.user.last_name
+            self.fields['first_name'].initial = self.instance.user.first_name
+            self.fields['email'].initial = self.instance.user.email
 
 class UserEditForm(forms.ModelForm):
-    # Эта форма теперь будет использоваться только для email
     class Meta:
         model = User
-        fields = ['email']
+        fields = ['first_name', 'last_name', 'email']
         labels = {
+            'first_name': 'Имя',
+            'last_name': 'Фамилия',
             'email': 'Email',
         }
 
+# Остальные формы без изменений...
 class TestSelectionForm(forms.Form):
-    # существующий код без изменений
     test = forms.ModelChoiceField(
         queryset=Test.objects.all().order_by('name'),
         empty_label="Выберите тест",
@@ -147,8 +151,6 @@ class ExcelUploadForm(forms.Form):
         label="Название теста (необязательно)",
         help_text="Если не указано, будет использовано имя файла"
     )
-
-# Функция для проведения зачета 
 
 class QuizCreationForm(forms.Form):
     test = forms.ModelChoiceField(

@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.db.models import Count, Avg  # Добавляем Avg здесь
 from django.utils import timezone
-from .models import Test, Question, UserTestProgress, QuizSession, QuizParticipant
+from .models import UserProfile, Test, Question, UserTestProgress, QuizSession, QuizParticipant
 from .forms import TestSelectionForm, CustomUserCreationForm, ExcelUploadForm, ExpressTestForm
 from .forms import UserEditForm, UserProfileForm, QuizCreationForm
 from django.utils.safestring import mark_safe
@@ -839,12 +839,6 @@ def edit_profile(request):
             
             # Сохраняем данные профиля
             profile = profile_form.save(commit=False)
-            
-            # Обновляем стандартные поля User из профиля
-            user.first_name = profile_form.cleaned_data['first_name']
-            user.last_name = profile_form.cleaned_data['last_name']
-            user.save()
-            
             profile.save()
             
             messages.success(request, 'Ваш профиль успешно обновлен!')
@@ -854,9 +848,6 @@ def edit_profile(request):
     else:
         user_form = UserEditForm(instance=request.user)
         profile_form = UserProfileForm(instance=request.user.profile)
-        # Устанавливаем начальные значения для полей ФИО
-        profile_form.fields['first_name'].initial = request.user.first_name
-        profile_form.fields['last_name'].initial = request.user.last_name
     
     return render(request, 'edit_profile.html', {
         'user_form': user_form,

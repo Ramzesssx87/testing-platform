@@ -79,6 +79,40 @@ class UserProfile(models.Model):
         
         return f"{self.last_name} {first_initial}{patronymic_initial}".strip()
     
+    def sync_with_user(self, save_user=False):
+        """Синхронизирует данные с User моделью без создания рекурсии"""
+        if self.user:
+            # Из профиля в User (только если в User пусто)
+            if self.first_name and not self.user.first_name:
+                self.user.first_name = self.first_name
+                if save_user:
+                    User.objects.filter(id=self.user.id).update(first_name=self.first_name)
+            
+            if self.last_name and not self.user.last_name:
+                self.user.last_name = self.last_name
+                if save_user:
+                    User.objects.filter(id=self.user.id).update(last_name=self.last_name)
+            
+            # Из User в профиль (только если в профиле пусто)
+            if self.user.first_name and not self.first_name:
+                self.first_name = self.user.first_name
+            
+            if self.user.last_name and not self.last_name:
+                self.last_name = self.user.last_name
+    
+    def save(self, *args, **kwargs):
+        # Синхронизируем перед сохранением (без сохранения User чтобы избежать рекурсии)
+        self.sync_with_user(save_user=False)
+        super().save(*args, **kwargs)
+        
+        # После сохранения профиля, обновляем User если нужно
+        if (self.first_name and self.first_name != self.user.first_name) or \
+           (self.last_name and self.last_name != self.user.last_name):
+            User.objects.filter(id=self.user.id).update(
+                first_name=self.first_name,
+                last_name=self.last_name
+            )
+    
     def parse_department_code(self):
         """Парсит код подразделения и возвращает компоненты"""
         if not self.department_code:
@@ -162,6 +196,7 @@ class UserProfile(models.Model):
         verbose_name = "Профиль пользователя"
         verbose_name_plural = "Профили пользователей"
 
+# Остальной код models.py без изменений...
 class UserTestProgress(models.Model):
     TEST_TYPES = [
         ('normal', 'Обычный тест'),
@@ -282,13 +317,18 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
+    # Используем update вместо save чтобы избежать рекурсии
     if hasattr(instance, 'profile'):
-        instance.profile.save()
-    else:
-        UserProfile.objects.create(user=instance)
+        # Синхронизируем данные
+        instance.profile.sync_with_user(save_user=False)
+        UserProfile.objects.filter(id=instance.profile.id).update(
+            first_name=instance.profile.first_name,
+            last_name=instance.profile.last_name,
+            patronymic=instance.profile.patronymic,
+            department_code=instance.profile.department_code
+        )
 
-# Функция для проведения зачета по тестам
-
+# Остальной код models.py без изменений...
 class QuizSession(models.Model):
     """Сессия зачета для группы"""
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_quizzes')
