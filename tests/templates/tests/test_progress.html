@@ -1,86 +1,314 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тестирование - {{ test.name }}</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .progress-bar { 
-            height: 20px; background-color: #f0f0f0; border-radius: 10px; 
-            margin-bottom: 20px; 
-        }
-        .progress { 
-            height: 100%; background-color: #4CAF50; border-radius: 10px; 
-            width: {% widthratio question_number total_questions 100 %}%; 
-        }
-        .question { margin-bottom: 20px; }
-        .options label { display: block; margin: 10px 0; }
-        button { 
-            background-color: #4CAF50; color: white; padding: 10px 15px; 
-            border: none; border-radius: 4px; cursor: pointer; 
-        }
-        .back-btn { 
-            background-color: #2196F3; color: white; padding: 10px 15px; 
-            text-decoration: none; border-radius: 4px; display: inline-block; 
-        }
-        .buttons-container { margin-top: 20px; }
-        .test-info {
-            background-color: #f8f9fa;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-        }
-        .badge {
-            background-color: #ffc107;
-            color: #212529;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            margin-left: 10px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>
-            {{ test.name }}
-            {% if test_type == 'express' %}
-                <span class="badge">Экспресс-тест</span>
-            {% endif %}
-        </h1>
-        
-        <div class="test-info">
-            <p>Вопрос {{ question_number }} из {{ total_questions }}</p>
-            {% if test_type == 'express' %}
-                <p><small>Выбранные вопросы: {{ total_questions }} из {{ test.questions.count }} доступных</small></p>
-            {% endif %}
-        </div>
-        
-        <div class="progress-bar">
-            <div class="progress"></div>
-        </div>
-        
-        <div class="question">
-            <h2>{{ question.question_text }}</h2>
-            <form method="post" id="answer-form">
-                {% csrf_token %}
-                <div class="options">
-                    {% for key, value in question.answer_options.items %}
-                        <label>
-                            <input type="checkbox" name="answer" value="{{ key }}">
-                            {{ value }}
-                        </label>
-                    {% endfor %}
-                </div>
-                <button type="submit">Ответить</button>
-            </form>
-        </div>
-        
-        <div class="buttons-container">
-            <a href="{% url 'test_selection' %}" class="back-btn">Вернуться к выбору теста</a>
-        </div>
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Тестирование - {{ test.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .container { 
+        max-width: 800px; 
+        margin: 0 auto; 
+        padding: 20px;
+    }
+    .progress-bar { 
+        height: 20px; 
+        background-color: #f0f0f0; 
+        border-radius: 10px; 
+        margin-bottom: 20px; 
+    }
+    .progress { 
+        height: 100%; 
+        background-color: #4CAF50; 
+        border-radius: 10px; 
+        width: {% widthratio question_number total_questions 100 %}%; 
+    }
+    .question { 
+        margin-bottom: 20px; 
+    }
+    .options label { 
+        display: block; 
+        margin: 10px 0; 
+        padding: 10px 15px;
+        border: 1px solid #e9ecef;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+    }
+    .options label:hover {
+        background-color: #f8f9fa;
+        border-color: #007bff;
+    }
+    .test-info {
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+    }
+    .badge {
+        background-color: #ffc107;
+        color: #212529;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-left: 10px;
+    }
+    .document-reference {
+        font-size: 0.9rem;
+        color: #6c757d;
+        font-style: italic;
+        margin-top: 15px;
+    }
+    
+    /* Таймер для зачета */
+    .timer-container {
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: #dc3545;
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 1000;
+        font-weight: bold;
+        text-align: center;
+        min-width: 140px;
+        font-family: 'Courier New', monospace;
+        font-size: 1.2rem;
+    }
+    
+    .timer-warning {
+        background: #ffc107;
+        color: #000;
+    }
+    
+    .timer-critical {
+        background: #dc3545;
+        color: white;
+        animation: pulse 1s infinite;
+    }
+    
+    .timer-expired {
+        background: #6c757d;
+        color: white;
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    
+    /* Новые стили для кнопок */
+    .buttons-container {
+        margin-top: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .submit-btn {
+        margin-right: auto;
+    }
+    
+    .exit-btn {
+        margin-left: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Таймер для зачета -->
+{% if is_quiz and progress.end_time %}
+
+<div class="timer-container" id="timerContainer">
+    <div style="font-size: 0.9rem; margin-bottom: 5px;">Осталось времени:</div>
+    <div id="timerDisplay">--:--</div>
+</div>
+
+<!-- Скрытые данные для таймера -->
+<div id="timerData" 
+     data-time-left="{{ time_left }}"
+     data-attempt-id="{{ progress.attempt_id }}"
+     data-test-id="{{ test.id }}"
+     style="display: none;">
+</div>
+{% else %}
+{% endif %}
+
+<div class="container">
+    <h1>
+        {{ test.name }}
+        {% if is_quiz %}
+            <span class="badge">Зачет</span>
+        {% elif test_type == 'express' %}
+            <span class="badge">Экспресс-тест</span>
+        {% endif %}
+    </h1>
+    
+    <div class="test-info">
+        <p>Вопрос {{ question_number }} из {{ total_questions }}</p>
+        {% if test_type == 'express' %}
+            <p><small>Случайные вопросы: {{ total_questions }} из {{ test.questions.count }} доступных</small></p>
+        {% endif %}
     </div>
-</body>
-</html>
+    
+    <div class="progress-bar">
+        <div class="progress"></div>
+    </div>
+    
+    <div class="question">
+        <h2>{{ question.question_text }}</h2>
+        <form method="post" id="answer-form">
+            {% csrf_token %}
+            <div class="options">
+                {% for key, value in question.answer_options.items %}
+                    <label>
+                        <input type="checkbox" name="answer" value="{{ key }}">
+                        <strong>{{ key }}.</strong> {{ value }}
+                    </label>
+                {% endfor %}
+            </div>
+            
+            
+            <div class="buttons-container">
+                <button type="submit" class="btn btn-primary submit-btn">
+                    Ответить
+                </button>
+                <a href="{% url 'test_selection' %}" class="btn btn-secondary exit-btn">Выйти из теста</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ПРОСТОЙ И НАДЕЖНЫЙ ТАЙМЕР
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== ЗАПУСК ПРОСТОГО ТАЙМЕРА ===');
+    
+    // Проверяем условия для таймера
+    const timerData = document.getElementById('timerData');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const timerContainer = document.getElementById('timerContainer');
+    const debugTimeLeft = document.getElementById('debugTimeLeft');
+    
+    if (!timerData || !timerDisplay) {
+        console.log('Таймер не требуется или элементы не найдены');
+        return;
+    }
+    
+    console.log('✅ Запускаем простой таймер для зачета');
+    
+    // Получаем начальное время
+    let remainingTime = parseFloat(timerData.getAttribute('data-time-left'));
+    const attemptId = timerData.getAttribute('data-attempt-id');
+    const testId = timerData.getAttribute('data-test-id');
+    
+    console.log('Начальное время:', remainingTime, 'секунд');
+    
+    // Функция форматирования времени
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    
+    // Функция обновления отображения
+    function updateDisplay() {
+        // Обновляем основное отображение
+        timerDisplay.textContent = formatTime(remainingTime);
+        
+        // Обновляем отладочную информацию
+        if (debugTimeLeft) {
+            debugTimeLeft.textContent = remainingTime.toFixed(1);
+        }
+        
+        // Меняем стили в зависимости от времени
+        if (remainingTime <= 0) {
+            timerContainer.className = 'timer-container timer-expired';
+            // Время вышло - перенаправляем
+            setTimeout(() => {
+                window.location.href = `/test/${testId}/results/?attempt_id=${attemptId}`;
+            }, 1000);
+        } else if (remainingTime < 300) { // Меньше 5 минут
+            timerContainer.className = 'timer-container timer-critical';
+        } else if (remainingTime < 600) { // Меньше 10 минут
+            timerContainer.className = 'timer-container timer-warning';
+        } else {
+            timerContainer.className = 'timer-container';
+        }
+    }
+    
+    // Функция проверки времени на сервере
+    function checkServerTime() {
+        fetch(`/check-time-remaining/?attempt_id=${attemptId}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Network error');
+                return response.json();
+            })
+            .then(data => {
+                if (data.time_expired) {
+                    console.log('Сервер сообщил: время вышло');
+                    window.location.href = `/test/${testId}/results/?attempt_id=${attemptId}`;
+                    return;
+                }
+                
+                if (data.remaining_time !== undefined) {
+                    // Синхронизируем время с сервером
+                    remainingTime = data.remaining_time;
+                    console.log('Синхронизация с сервером:', remainingTime);
+                }
+                
+                // Проверяем снова через 30 секунд
+                setTimeout(checkServerTime, 30000);
+            })
+            .catch(error => {
+                console.error('Ошибка проверки времени:', error);
+                // При ошибке проверяем снова через минуту
+                setTimeout(checkServerTime, 60000);
+            });
+    }
+    
+    // Запускаем основной таймер
+    function startMainTimer() {
+        console.log('Запуск основного таймера');
+        
+        // Сразу обновляем отображение
+        updateDisplay();
+        
+        // Запускаем интервал для обновления каждую секунду
+        const timerInterval = setInterval(() => {
+            if (remainingTime <= 0) {
+                clearInterval(timerInterval);
+                updateDisplay();
+                return;
+            }
+            
+            remainingTime--;
+            updateDisplay();
+            
+        }, 1000);
+    }
+    
+    // Инициализация
+    startMainTimer();
+    checkServerTime(); // Запускаем проверку сервера
+    
+    console.log('Таймер успешно запущен');
+});
+
+// Блокировка двойной отправки формы
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('answer-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Отправка...';
+        });
+    }
+});
+</script>
+{% endblock %}

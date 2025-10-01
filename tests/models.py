@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 import json
 from django.utils import timezone
 import re
@@ -84,23 +86,17 @@ class UserProfile(models.Model):
             
         code = self.department_code.upper().strip()
         
-        # Разбиваем код на компоненты
-        parts = code.split('-')
-        group = parts[0] if len(parts) > 0 else None
-        subgroup = parts[1] if len(parts) > 1 else None
-        subsubgroup = parts[2] if len(parts) > 2 else None
+        # Убираем все 'У' из кода для анализа структуры
+        clean_code = code.replace('У', '')
         
-        # Определяем уровень прав (убираем 'У' из последнего компонента)
-        has_view_rights = False
-        if group and 'У' in group:
-            has_view_rights = True
-            group = group.replace('У', '')
-        elif subgroup and 'У' in subgroup:
-            has_view_rights = True
-            subgroup = subgroup.replace('У', '')
-        elif subsubgroup and 'У' in subsubgroup:
-            has_view_rights = True
-            subsubgroup = subsubgroup.replace('У', '')
+        # Разбиваем код на компоненты
+        parts = clean_code.split('-')
+        group = parts[0] if len(parts) > 0 and parts[0] else None
+        subgroup = parts[1] if len(parts) > 1 and parts[1] else None
+        subsubgroup = parts[2] if len(parts) > 2 and parts[2] else None
+        
+        # Определяем уровень прав (проверяем наличие 'У' в оригинальном коде)
+        has_view_rights = 'У' in code
         
         return {
             'group': group,
@@ -130,19 +126,21 @@ class UserProfile(models.Model):
         # Определяем уровень доступа на основе структуры кода
         if parsed['subsubgroup']:  # Формат: 35-1-1У
             # Может видеть всех в своей подподгруппе
-            pattern = f"{parsed['group']}-{parsed['subgroup']}-{parsed['subsubgroup']}%"
-            query &= Q(profile__department_code__iregex=rf'^{parsed["group"]}-{parsed["subgroup"]}-{parsed["subsubgroup"]}[\wУ]*$')
+            base_pattern = f"{parsed['group']}-{parsed['subgroup']}-{parsed['subsubgroup']}"
+            query &= Q(profile__department_code__iregex=rf'^{base_pattern}[\wУ]*$')
         
         elif parsed['subgroup']:  # Формат: 35-1У
             # Может видеть всех в своей подгруппе (включая подподгруппы)
-            query &= Q(profile__department_code__iregex=rf'^{parsed["group"]}-{parsed["subgroup"]}[\w-]*$')
+            base_pattern = f"{parsed['group']}-{parsed['subgroup']}"
+            query &= Q(profile__department_code__iregex=rf'^{base_pattern}(?:$|-\w+[\wУ]*$)')
         
         elif parsed['group']:  # Формат: 35У
             # Может видеть всех в своей группе
-            query &= Q(profile__department_code__iregex=rf'^{parsed["group"]}[\w-]*$')
+            base_pattern = f"{parsed['group']}"
+            query &= Q(profile__department_code__iregex=rf'^{base_pattern}(?:$|-\w+(?:$|-\w+[\wУ]*$))')
         
-        # Исключаем самого себя из результатов
-        return User.objects.filter(query).exclude(id=self.user.id)
+        # НЕ исключаем самого себя из результатов - пользователь должен видеть свои результаты
+        return User.objects.filter(query)
     
     def get_department_hierarchy(self):
         """Возвращает иерархию подразделения пользователя"""
@@ -182,7 +180,7 @@ class UserTestProgress(models.Model):
     start_time = models.DateTimeField(null=True, blank=True, verbose_name="Время начала теста")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+    end_time = models.DateTimeField(null=True, blank=True, verbose_name="Время окончания теста")
     # Новые поля для статистики
     score = models.FloatField(null=True, blank=True, verbose_name="Результат в процентах")
     correct_answers_count = models.IntegerField(null=True, blank=True, verbose_name="Количество правильных ответов")
@@ -195,6 +193,16 @@ class UserTestProgress(models.Model):
         blank=True, 
         verbose_name="Порядок вопросов в экспресс-тесте"
     )
+
+    # Добавьте связь с QuizSession
+    quiz_session = models.ForeignKey(
+        'QuizSession', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='progress_records'
+    )
+
     # Уникальный идентификатор попытки
     attempt_id = models.CharField(max_length=100, unique=True, blank=True, null=True)
     
@@ -249,10 +257,24 @@ class UserTestProgress(models.Model):
         
         self.correct_answers_count = correct_count
         self.score = (correct_count / self.total_questions_count) * 100 if self.total_questions_count > 0 else 0
-# Сигналы для автоматического создания профиля при создании пользователя
-from django.db.models.signals import post_save
-from django.dispatch import receiver
+        
+    # Время теста
+    def is_time_expired(self):
+        """Проверяет, истекло ли время теста"""
+        if not self.end_time:
+            return False
+        return timezone.now() > self.end_time
 
+    def get_remaining_time(self):
+        """Возвращает оставшееся время в секундах"""
+        if not self.end_time:
+            return None
+        now = timezone.now()
+        if now > self.end_time:
+            return 0
+        return (self.end_time - now).total_seconds()
+
+# Сигналы для автоматического создания профиля при создании пользователя
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
@@ -264,3 +286,92 @@ def save_user_profile(sender, instance, **kwargs):
         instance.profile.save()
     else:
         UserProfile.objects.create(user=instance)
+
+# Функция для проведения зачета по тестам
+
+class QuizSession(models.Model):
+    """Сессия зачета для группы"""
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_quizzes')
+    test = models.ForeignKey(Test, on_delete=models.CASCADE)
+    question_count = models.IntegerField(default=20, verbose_name="Количество вопросов")
+    time_limit_minutes = models.IntegerField(default=45, verbose_name="Лимит времени (минуты)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    starts_at = models.DateTimeField(verbose_name="Время начала зачета")
+    ends_at = models.DateTimeField(verbose_name="Время окончания зачета")
+    is_active = models.BooleanField(default=False, verbose_name="Активен")
+    # Новое поле для отслеживания принудительной активации
+    manually_activated = models.BooleanField(default=False, verbose_name="Активирован вручную")
+    
+    # Поля для хранения информации о вопросах
+    question_order = models.JSONField(verbose_name="Порядок вопросов")
+    
+    def is_available_for_user(self, user):
+        """Проверяет, доступен ли зачет для пользователя"""
+        if not self.is_active:
+            return False
+        
+        now = timezone.now()
+        if now > self.ends_at:
+            return False
+            
+        # Проверяем, является ли пользователь участником
+        return self.participants.filter(user=user).exists()
+    
+    def get_user_participant(self, user):
+        """Возвращает участника для пользователя"""
+        try:
+            return self.participants.get(user=user)
+        except QuizParticipant.DoesNotExist:
+            return None
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Сессия зачета"
+        verbose_name_plural = "Сессии зачетов"
+    
+    def __str__(self):
+        return f"Зачет {self.test.name} от {self.creator.username}"
+    
+    def check_activation(self):
+        """Проверяет и обновляет статус активации зачета"""
+        now = timezone.now()
+        
+        # Если зачет уже активирован, ничего не делаем
+        if self.is_active:
+            return True
+            
+        # Если время начала наступило, активируем автоматически
+        if now >= self.starts_at:
+            self.is_active = True
+            self.save()
+            return True
+            
+        return False
+    
+    def activate_manually(self):
+        """Принудительная активация зачета"""
+        self.is_active = True
+        self.manually_activated = True
+        self.save()
+
+class QuizParticipant(models.Model):
+    """Участник зачета"""
+    quiz_session = models.ForeignKey(QuizSession, on_delete=models.CASCADE, related_name='participants')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    progress = models.OneToOneField(UserTestProgress, on_delete=models.CASCADE, null=True, blank=True)
+    joined_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['quiz_session', 'user']
+        verbose_name = "Участник зачета"
+        verbose_name_plural = "Участники зачетов"
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.quiz_session}"
+    
+    def update_completion_status(self):
+        """Обновляет статус завершения на основе прогресса теста"""
+        if self.progress and self.progress.completed and not self.completed_at:
+            self.completed_at = self.progress.completed_at
+            self.save()

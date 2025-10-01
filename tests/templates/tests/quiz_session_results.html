@@ -1,0 +1,449 @@
+{% extends 'base.html' %}
+
+{% block title %}Результаты зачета: {{ quiz_session.test.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        /* СКРЫВАЕМ ВСЕ ЭЛЕМЕНТЫ СТРАНИЦЫ */
+        body * {
+            visibility: hidden;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* ПОКАЗЫВАЕМ ТОЛЬКО НУЖНЫЙ КОНТЕНТ */
+        .print-content,
+        .print-content * {
+            visibility: visible;
+        }
+        
+        /* ПОЗИЦИОНИРОВАНИЕ КОНТЕНТА ДЛЯ ПЕЧАТИ */
+        .print-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* СКРЫВАЕМ ВСЕ ОСТАЛЬНЫЕ ЭЛЕМЕНТЫ */
+        .header,
+        .main-nav,
+        .container,
+        .no-print,
+        .card,
+        .btn,
+        .alert,
+        .badge,
+        .text-muted,
+        .notification {
+            display: none !important;
+        }
+        
+        /* ОСНОВНЫЕ СТИЛИ ДЛЯ ПЕЧАТИ */
+        body {
+            font-size: 12pt;
+            line-height: 1.2;
+            font-family: "Times New Roman", serif;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+            color: black !important;
+        }
+        
+        .print-header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-top: 0;
+        }
+        
+        .print-title {
+            font-size: 18pt;
+            font-weight: bold;
+            margin-bottom: 15px;
+            margin-top: 0;
+        }
+        
+        .print-stats {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 12pt;
+        }
+        
+        .print-stats span {
+            margin: 0 15px;
+        }
+        
+        .print-date {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 12pt;
+        }
+        
+        .table {
+            width: 100%;
+            font-size: 10pt;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        
+        .table th, .table td {
+            border: 1px solid #000 !important;
+            padding: 6px 8px;
+            text-align: center;
+        }
+        
+        .table th {
+            background-color: #f8f9fa !important;
+            font-weight: bold;
+        }
+        
+        /* СТИЛИ ДЛЯ ПОДПИСИ ПРОВЕРЯЮЩЕГО */
+        .print-footer {
+            text-align: right;
+            margin-top: 40px;
+            font-size: 11pt;
+            position: relative;
+        }
+        
+        .print-checker {
+            border-top: 1px solid #000;
+            padding-top: 5px;
+            display: inline-block;
+            min-width: 200px;
+        }
+        
+        /* НАСТРОЙКИ СТРАНИЦЫ */
+        @page {
+            margin: 2cm;
+            size: A4;
+        }
+        
+        /* ГАРАНТИРУЕМ, ЧТО НЕТ ЛИШНИХ ОТСТУПОВ */
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+    }
+    
+    /* СТИЛИ ДЛЯ ЭКРАНА */
+    .print-content {
+        display: none;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .table tbody tr:first-child td {
+        background-color: #fff3cd;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Результаты зачета: {{ quiz_session.test.name }}</h1>
+    
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <button onclick="history.back()" class="btn btn-secondary">← Назад</button>
+        <button onclick="printResults()" class="btn btn-primary">
+            🖨️ Печать результатов
+        </button>
+    </div>
+    
+    <!-- КОНТЕНТ ДЛЯ ПЕЧАТИ -->
+    <div class="print-content">
+        <!-- 1. НАЗВАНИЕ ТЕСТА ПО ЦЕНТРУ -->
+        <div class="print-header">
+            <div class="print-title">&lt;&lt; {{ quiz_session.test.name }} &gt;&gt;</div>
+        </div>
+        
+        <!-- 2. СТАТИСТИКА -->
+        <div class="print-stats">
+            <span><strong>Всего участников:</strong> {{ total_count }}</span>
+            <span><strong>Завершили:</strong> {{ completed_count }}</span>
+            <span><strong>Средний балл:</strong> {{ avg_score }}%</span>
+        </div>
+        
+        <!-- 3. ДАТА ПРОВЕДЕНИЯ -->
+        <div class="print-date">
+            <strong>Дата проведения:</strong> {{ quiz_session.ends_at|date:"d.m.Y" }}
+        </div>
+        
+        <!-- 4. ТАБЛИЦА РЕЗУЛЬТАТОВ -->
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Участник</th>
+                    <th>Результат</th>
+                    <th>Оценка</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for participant in participants %}
+                    <tr>
+                        <td>
+                            {% if participant.completed_at %}
+                                {{ forloop.counter }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td style="text-align: left;">
+                            {{ participant.user.profile.last_name }} 
+                            {{ participant.user.first_name|first }}.
+                            {% if participant.user.profile.patronymic %}
+                                {{ participant.user.profile.patronymic|first }}.
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if participant.progress and participant.progress.score is not None %}
+                                <strong>{{ participant.progress.score|floatformat:1 }}%</strong>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if participant.progress and participant.progress.score is not None %}
+                                {% if participant.progress.score <= 50 %}
+                                    неудовлетворительно
+                                {% elif participant.progress.score <= 70 %}
+                                    удовлетворительно
+                                {% elif participant.progress.score <= 90 %}
+                                    хорошо
+                                {% else %}
+                                    отлично
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- 5. ПРОВЕРЯЮЩИЙ В ПРАВОМ НИЖНЕМ УГЛУ -->
+        <div class="print-footer">
+            <div class="print-checker">
+                <strong>Проверяющий:</strong><br>
+                {{ quiz_session.creator.profile.last_name }} 
+                {{ quiz_session.creator.first_name|first }}.
+                {% if quiz_session.creator.profile.patronymic %}
+                    {{ quiz_session.creator.profile.patronymic|first }}.
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- КАРТОЧКА ДЛЯ ЭКРАНА (НЕ ДЛЯ ПЕЧАТИ) -->
+    <div class="card no-print">
+        <div class="card-header">
+            <h5 class="mb-0">
+                Результаты участников 
+                <small class="text-muted">(отсортированы по результату)</small>
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if participants %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Участник</th>
+                                <th>Статус</th>
+                                <th>
+                                    Результат 
+                                    <span class="text-success">▼</span>
+                                </th>
+                                <th>Оценка</th>
+                                <th>Время завершения</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for participant in participants %}
+                                <tr>
+                                    <td>
+                                        {% if participant.completed_at %}
+                                            {{ forloop.counter }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ participant.user.profile.last_name }} 
+                                        {{ participant.user.first_name|first }}.
+                                        {% if participant.user.profile.patronymic %}
+                                            {{ participant.user.profile.patronymic|first }}.
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if participant.completed_at %}
+                                            <span class="badge bg-success">Завершено</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">В процессе</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if participant.progress and participant.progress.score is not None %}
+                                            <strong>{{ participant.progress.score|floatformat:1 }}%</strong>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if participant.progress and participant.progress.score is not None %}
+                                            {% if participant.progress.score <= 50 %}
+                                                <span class="badge bg-danger">неудовлетворительно</span>
+                                            {% elif participant.progress.score <= 70 %}
+                                                <span class="badge bg-warning">удовлетворительно</span>
+                                            {% elif participant.progress.score <= 90 %}
+                                                <span class="badge bg-primary">хорошо</span>
+                                            {% else %}
+                                                <span class="badge bg-success">отлично</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if participant.completed_at %}
+                                            {{ participant.completed_at|date:"d.m.Y H:i" }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if participant.progress %}
+                                            <a href="{% url 'user_test_results' participant.user.id quiz_session.test.id %}?attempt_id={{ participant.progress.attempt_id }}" 
+                                               class="btn btn-sm btn-outline-primary">Детали</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <strong>Порядок сортировки:</strong> Завершившие тест → по результату (от лучшего) → по времени завершения (раньше лучше)
+                    </small>
+                </div>
+            {% else %}
+                <p class="text-muted">Нет участников.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // УЛУЧШЕННАЯ ФУНКЦИЯ ДЛЯ ПЕЧАТИ
+    function printResults() {
+        // Сохраняем оригинальное состояние body
+        const originalBodyContent = document.body.innerHTML;
+        const originalTitle = document.title;
+        
+        // Получаем только контент для печати
+        const printContent = document.querySelector('.print-content');
+        
+        if (!printContent) {
+            alert('Контент для печати не найден');
+            return;
+        }
+        
+        // Создаем новое окно для печати
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        
+        // HTML для печати
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Результаты зачета: {{ quiz_session.test.name }}</title>
+                <style>
+                    body {
+                        font-family: "Times New Roman", serif;
+                        font-size: 12pt;
+                        line-height: 1.2;
+                        margin: 2cm;
+                        color: #000;
+                        background: #fff;
+                    }
+                    .print-header {
+                        text-align: center;
+                        margin-bottom: 25px;
+                    }
+                    .print-title {
+                        font-size: 18pt;
+                        font-weight: bold;
+                        margin-bottom: 15px;
+                    }
+                    .print-stats {
+                        text-align: center;
+                        margin-bottom: 20px;
+                        font-size: 12pt;
+                    }
+                    .print-stats span {
+                        margin: 0 15px;
+                    }
+                    .print-date {
+                        text-align: center;
+                        margin-bottom: 20px;
+                        font-size: 12pt;
+                    }
+                    .table {
+                        width: 100%;
+                        font-size: 10pt;
+                        border-collapse: collapse;
+                        margin-bottom: 30px;
+                    }
+                    .table th, .table td {
+                        border: 1px solid #000;
+                        padding: 6px 8px;
+                        text-align: center;
+                    }
+                    .table th {
+                        background-color: #f8f9fa;
+                        font-weight: bold;
+                    }
+                    .print-footer {
+                        text-align: right;
+                        margin-top: 40px;
+                        font-size: 11pt;
+                    }
+                    .print-checker {
+                        border-top: 1px solid #000;
+                        padding-top: 5px;
+                        display: inline-block;
+                        min-width: 200px;
+                    }
+                    @page {
+                        margin: 2cm;
+                        size: A4;
+                    }
+                </style>
+            </head>
+            <body>
+                ${printContent.innerHTML}
+            </body>
+            </html>
+        `);
+        
+        printWindow.document.close();
+        
+        // Даем время на загрузку стилей
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 250);
+    }
+</script>
+{% endblock %}

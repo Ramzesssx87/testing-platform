@@ -2,79 +2,109 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
 
-{% block title %}Результаты теста {{ target_user.username }} - {{ test.name }}{% endblock %}
+{% block title %}Результаты теста - {{ test.name }} - {{ target_user.username }}{% endblock %}
 
 {% block content %}
-<div class="user-test-results-container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="flex-grow-1">
         <h1>
             Результаты теста: {{ test.name }}
-            <br>
-            <small class="text-muted">Пользователь: {{ target_user.get_full_name|default:target_user.username }}</small>
+            <span class="badge 
+                {% if attempt.test_type == 'quiz' %}bg-info
+                {% elif attempt.test_type == 'express' %}bg-warning
+                {% else %}bg-primary{% endif %}">
+                {% if attempt.test_type == 'quiz' %}Зачет
+                {% elif attempt.test_type == 'express' %}Экспресс-тест
+                {% else %}Тренировка{% endif %}
+            </span>
         </h1>
-        <a href="{% url 'group_results' %}" class="btn btn-secondary">← Назад к результатам группы</a>
+        <p class="lead mb-0 mt-2">
+            <strong>Пользователь:</strong> {{ target_user.profile.get_short_name|default:target_user.username }}
+        </p>
+    </div>
+    {% if session_id %}
+        <a href="{% url 'quiz_session_results' session_id %}" class="btn btn-secondary ms-3">К результатам зачета</a>
+    {% else %}
+        <a href="{% url 'group_results' %}" class="btn btn-secondary ms-3">К результатам</a>
+    {% endif %}
+</div>
+
+<div class="test-results">
+    <div class="score">
+        <h2>Результат: {{ correct_answers }}/{{ total_questions }} ({{ score|floatformat:1 }}%)</h2>
+        <p class="text-muted">Завершено: {{ attempt.completed_at|date:"d.m.Y H:i" }}</p>
+        
+        {% if attempt.test_type == 'quiz' %}
+            <div class="alert alert-info mt-3">
+                <strong>Зачет завершен!</strong> Результаты зачета.
+            </div>
+        {% elif attempt.test_type == 'express' %}
+            <div class="alert alert-warning mt-3">
+                <strong>Экспресс-тест завершен!</strong> Результаты экспресс-теста.
+            </div>
+        {% else %}
+            <div class="alert alert-primary mt-3">
+                <strong>Тренировка завершена!</strong> Результаты тренировки.
+            </div>
+        {% endif %}
     </div>
 
-    <div class="test-results">
-        <div class="score mb-4">
-            <h2>Результат: {{ correct_answers }}/{{ total_questions }} ({{ score|floatformat:1 }}%)</h2>
-            <p class="text-muted">
-                Пройдено: {{ attempt.completed_at|date:"d.m.Y H:i" }} |
-                Тип теста: {{ attempt.test_type|yesno:"Экспресс-тест,Обычная тренировка" }}
-            </p>
-        </div>
-
-        <div class="questions-review">
-            <h3>Детализация ответов:</h3>
-            {% for item in questions_with_order %}
-            {% with question=item.question %}
-            <div class="question-item {% if question.id|stringformat:'s' in user_answers %}answered{% else %}not-answered{% endif %}">
-                <div class="question-text">
-                    <strong>Вопрос {{ item.order_number }}:</strong> {{ question.question_text }}
-                </div>
-                
-                <div class="correct-answer">
-                    <strong>Правильные ответы:</strong>
-                    {% for answer in question.correct_answer|split:"," %}
-                        <span class="correct-option">{{ question.answer_options|get_item:answer }}</span>
-                    {% endfor %}
-                </div>
-
-                <div class="user-answer">
-                    <strong>Ответы пользователя:</strong>
-                    {% with user_answer=user_answers|get_item:question.id|stringformat:'s' %}
-                        {% if user_answer %}
-                            {% for answer in user_answer %}
-                                <span class="user-option {% if answer in question.correct_answer %}correct{% else %}incorrect{% endif %}">
-                                    {{ question.answer_options|get_item:answer }}
-                                </span>
-                            {% endfor %}
-                        {% else %}
-                            <span class="not-answered">Нет ответа</span>
-                        {% endif %}
-                    {% endwith %}
-                </div>
-
-                <div class="document-reference">
-                    <strong>Ссылка на документ:</strong> {{ question.document_reference }}
-                </div>
+    <div class="questions-review">
+        <h3>Детализация ответов:</h3>
+        {% for item in questions_with_order %}
+        {% with question=item.question %}
+        <div class="question-item {% if item.is_correct %}correct{% else %}incorrect{% endif %}">
+            <div class="question-text">
+                <strong>Вопрос {{ item.order_number }}:</strong> {{ question.question_text }}
+                {% if item.is_correct %}
+                    <span class="badge bg-success ms-2">Правильно</span>
+                {% else %}
+                    <span class="badge bg-danger ms-2">Неправильно</span>
+                {% endif %}
             </div>
-            {% endwith %}
-            {% endfor %}
-        </div>
+            
+            <div class="correct-answer mb-2">
+                <strong>Правильные ответы:</strong>
+                {% if item.correct_answers_list %}
+                    {% for answer in item.correct_answers_list %}
+                        <span class="correct-option">{{ question.answer_options|get_item:answer|default:answer }}</span>
+                    {% endfor %}
+                {% else %}
+                    <span class="text-muted">Нет правильных ответов</span>
+                {% endif %}
+            </div>
 
-        <div class="actions mt-4">
-            <a href="{% url 'group_results' %}" class="btn btn-secondary">← Назад к результатам группы</a>
+            <div class="user-answer mb-2">
+                <strong>Ответы пользователя:</strong>
+                {% with user_answer=user_answers|get_item:question.id %}
+                    {% if user_answer %}
+                        {% for answer in user_answer %}
+                            {% with answer_int=answer|add:0 %}
+                            <span class="user-option {% if answer_int in item.correct_answers_list %}correct{% else %}incorrect{% endif %}">
+                                {{ question.answer_options|get_item:answer|default:answer }}
+                            </span>
+                            {% endwith %}
+                        {% endfor %}
+                    {% else %}
+                        <span class="not-answered">Нет ответа</span>
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            <div class="document-reference">
+                <strong>Ссылка на документ:</strong> {{ question.document_reference }}
+            </div>
         </div>
+        {% endwith %}
+        {% endfor %}
+    </div>
+
+    <div class="actions">
+        <button onclick="history.back()" class="btn btn-secondary">← Назад</button>
     </div>
 </div>
 
 <style>
-    .user-test-results-container {
-        max-width: 1000px;
-        margin: 0 auto;
-    }
-    
     .question-item {
         border: 1px solid #ddd;
         padding: 15px;
@@ -82,9 +112,19 @@
         border-radius: 5px;
     }
     
+    .question-item.correct {
+        border-left: 4px solid #28a745;
+        background-color: #f8fff8;
+    }
+    
+    .question-item.incorrect {
+        border-left: 4px solid #dc3545;
+        background-color: #fff8f8;
+    }
+    
     .correct-option {
         background-color: #dff0d8;
-        padding: 5px;
+        padding: 5px 10px;
         margin: 2px;
         border-radius: 3px;
         display: inline-block;
@@ -92,7 +132,7 @@
     
     .user-option.correct {
         background-color: #dff0d8;
-        padding: 5px;
+        padding: 5px 10px;
         margin: 2px;
         border-radius: 3px;
         display: inline-block;
@@ -100,7 +140,7 @@
     
     .user-option.incorrect {
         background-color: #f2dede;
-        padding: 5px;
+        padding: 5px 10px;
         margin: 2px;
         border-radius: 3px;
         display: inline-block;
@@ -109,6 +149,13 @@
     .not-answered {
         color: #a94442;
         font-style: italic;
+    }
+    
+    .actions {
+        margin-top: 20px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
     }
 </style>
 {% endblock %}

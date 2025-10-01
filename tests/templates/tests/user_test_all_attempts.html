@@ -1,0 +1,338 @@
+<!-- tests/templates/tests/user_test_all_attempts.html -->
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Все попытки - {{ test.name }} - {{ target_user.username }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            Все попытки пользователя: {{ target_user.profile.get_short_name|default:target_user.username }}
+        </h1>
+        <a href="{% url 'group_results' %}" class="btn btn-secondary">← Назад к результатам группы</a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <p class="lead mb-0">
+                <strong>Тест:</strong> {{ test.name }}
+            </p>
+        </div>
+    </div>
+
+    <!-- Разделяем попытки по типам -->
+    {% with training_attempts=all_attempts|filter_test_type:"normal" %}
+    {% with express_attempts=all_attempts|filter_test_type:"express" %}
+    {% with quiz_attempts=all_attempts|filter_test_type:"quiz" %}
+    
+    {% with best_training=training_attempts|first_by_score %}
+    {% with best_express=express_attempts|first_by_score %}
+    {% with best_quiz=quiz_attempts|first_by_score %}
+
+    <!-- БЛОК 1: ТРЕНИРОВКИ -->
+    {% if training_attempts %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <!-- Лучшая тренировка -->
+            {% if best_training %}
+            <div class="card mb-4 border-success best-attempt-block">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">🏆 Лучшая тренировка</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-1 text-center">
+                            <span class="fs-4">🏆</span>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <strong>Дата, время:</strong>
+                            <div>{{ best_training.completed_at|date:"d.m.Y H:i" }}</div>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <strong>Результат:</strong>
+                            <div>
+                                <span class="badge {% if best_training.score >= 80 %}bg-success{% elif best_training.score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ best_training.score|floatformat:1 }}%
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <strong>Правильные ответы:</strong>
+                            <div>{{ best_training.correct_answers_count }}/{{ best_training.total_questions_count }}</div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <a href="{% url 'user_test_results' target_user.id test.id %}?attempt_id={{ best_training.attempt_id }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                📊 Подробнее
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Все тренировки -->
+            <h6 class="mb-3">Все тренировки ({{ training_attempts|length }})</h6>
+            
+            {% for attempt in training_attempts %}
+            <div class="card mb-2 {% if attempt.id == best_training.id %}best-attempt-block border-warning{% else %}border-light{% endif %}">
+                <div class="card-body py-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-1 text-center">
+                            {% if attempt.id == best_training.id %}
+                                <span class="fs-5">🏆</span>
+                            {% else %}
+                                <span class="text-muted">{{ forloop.counter }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3 text-center">
+                            {{ attempt.completed_at|date:"d.m.Y H:i" }}
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <span class="badge {% if attempt.score >= 80 %}bg-success{% elif attempt.score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ attempt.score|floatformat:1 }}%
+                            </span>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            {{ attempt.correct_answers_count }}/{{ attempt.total_questions_count }}
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <a href="{% url 'user_test_results' target_user.id test.id %}?attempt_id={{ attempt.attempt_id }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                📊 Подробнее
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- БЛОК 2: ЭКСПРЕСС-ТЕСТЫ -->
+    {% if express_attempts %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <!-- Лучший экспресс-тест -->
+            {% if best_express %}
+            <div class="card mb-4 border-success best-attempt-block">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">🏆 Лучший экспресс-тест</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-1 text-center">
+                            <span class="fs-4">🏆</span>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <strong>Дата, время:</strong>
+                            <div>{{ best_express.completed_at|date:"d.m.Y H:i" }}</div>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <strong>Результат:</strong>
+                            <div>
+                                <span class="badge {% if best_express.score >= 80 %}bg-success{% elif best_express.score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ best_express.score|floatformat:1 }}%
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <strong>Правильные ответы:</strong>
+                            <div>{{ best_express.correct_answers_count }}/{{ best_express.total_questions_count }}</div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <a href="{% url 'user_test_results' target_user.id test.id %}?attempt_id={{ best_express.attempt_id }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                📊 Подробнее
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Все экспресс-тесты -->
+            <h6 class="mb-3">Все экспресс-тесты ({{ express_attempts|length }})</h6>
+            
+            {% for attempt in express_attempts %}
+            <div class="card mb-2 {% if attempt.id == best_express.id %}best-attempt-block border-warning{% else %}border-light{% endif %}">
+                <div class="card-body py-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-1 text-center">
+                            {% if attempt.id == best_express.id %}
+                                <span class="fs-5">🏆</span>
+                            {% else %}
+                                <span class="text-muted">{{ forloop.counter }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3 text-center">
+                            {{ attempt.completed_at|date:"d.m.Y H:i" }}
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <span class="badge {% if attempt.score >= 80 %}bg-success{% elif attempt.score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ attempt.score|floatformat:1 }}%
+                            </span>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            {{ attempt.correct_answers_count }}/{{ attempt.total_questions_count }}
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <a href="{% url 'user_test_results' target_user.id test.id %}?attempt_id={{ attempt.attempt_id }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                📊 Подробнее
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- БЛОК 3: ЗАЧЕТЫ -->
+    {% if quiz_attempts %}
+    <div class="card">
+        <div class="card-body">
+            <!-- Лучший зачет -->
+            {% if best_quiz %}
+            <div class="card mb-4 border-success best-attempt-block">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">🏆 Лучший зачет</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-1 text-center">
+                            <span class="fs-4">🏆</span>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <strong>Дата, время:</strong>
+                            <div>{{ best_quiz.completed_at|date:"d.m.Y H:i" }}</div>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <strong>Результат:</strong>
+                            <div>
+                                <span class="badge {% if best_quiz.score >= 80 %}bg-success{% elif best_quiz.score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ best_quiz.score|floatformat:1 }}%
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <strong>Правильные ответы:</strong>
+                            <div>{{ best_quiz.correct_answers_count }}/{{ best_quiz.total_questions_count }}</div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <a href="{% url 'user_test_results' target_user.id test.id %}?attempt_id={{ best_quiz.attempt_id }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                📊 Подробнее
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Все зачеты -->
+            <h6 class="mb-3">Все зачеты ({{ quiz_attempts|length }})</h6>
+            
+            {% for attempt in quiz_attempts %}
+            <div class="card mb-2 {% if attempt.id == best_quiz.id %}best-attempt-block border-warning{% else %}border-light{% endif %}">
+                <div class="card-body py-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-1 text-center">
+                            {% if attempt.id == best_quiz.id %}
+                                <span class="fs-5">🏆</span>
+                            {% else %}
+                                <span class="text-muted">{{ forloop.counter }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3 text-center">
+                            {{ attempt.completed_at|date:"d.m.Y H:i" }}
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <span class="badge {% if attempt.score >= 80 %}bg-success{% elif attempt.score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ attempt.score|floatformat:1 }}%
+                            </span>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            {{ attempt.correct_answers_count }}/{{ attempt.total_questions_count }}
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <a href="{% url 'user_test_results' target_user.id test.id %}?attempt_id={{ attempt.attempt_id }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                📊 Подробнее
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not training_attempts and not express_attempts and not quiz_attempts %}
+    <div class="text-center py-4">
+        <p class="text-muted">Нет завершенных попыток по этому тесту.</p>
+    </div>
+    {% endif %}
+
+    {% endwith %}
+    {% endwith %}
+    {% endwith %}
+    {% endwith %}
+    {% endwith %}
+    {% endwith %}
+</div>
+
+<style>
+    .best-attempt-block {
+        border-left: 4px solid #28a745;
+    }
+    
+    .border-warning {
+        border-left: 4px solid #ffc107 !important;
+    }
+    
+    .badge {
+        font-size: 0.8em;
+        min-width: 70px;
+    }
+    
+    /* Стили для золотого кубка в лучших попытках */
+    .best-attempt-block .fs-4 {
+        color: #ffd700;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+    
+    .fs-5 {
+        color: #ffd700;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+    
+    /* Стили для карточек обычных попыток */
+    .card.border-light {
+        border: 1px solid #dee2e6 !important;
+    }
+    
+    .card-body.py-2 {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+    
+    /* Выравнивание контента */
+    .card .row > div {
+        padding: 5px 10px;
+    }
+    
+    /* Заголовки разделов */
+    h6.mb-3 {
+        color: #495057;
+        font-weight: 600;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}

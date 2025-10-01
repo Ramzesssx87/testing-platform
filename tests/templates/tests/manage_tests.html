@@ -4,59 +4,62 @@
 {% block title %}Управление тестами{% endblock %}
 
 {% block content %}
-<div class="manage-tests-container">
-    <h1>Управление тестами</h1>
-    
-    <div class="nav-links">
-        <a href="{% url 'test_selection' %}" class="back-btn">← Назад к выбору теста</a>
-        <a href="{% url 'upload_excel' %}" class="upload-btn">📤 Загрузить новый тест</a>
-    </div>
-    
-    <div class="tests-list">
-        {% for test in tests %}
-            <div class="test-item">
-                <div class="test-info">
-                    <h3>{{ test.name }}</h3>
-                    <p>Вопросов: {{ test.question_count }}</p>
-                    <p>Создан: {{ test.created_at|date:"d.m.Y H:i" }}</p>
-                    {% if test.description %}
-                        <p class="test-description">{{ test.description }}</p>
-                    {% endif %}
+<div class="container">
+    <div class="manage-tests-container">
+        <h1>Управление тестами</h1>
+        
+        <div class="nav-links">
+            <a href="{% url 'test_selection' %}" class="btn btn-secondary">← Назад к выбору теста</a>
+            <a href="{% url 'upload_excel' %}" class="btn btn-primary">📤 Загрузить новый тест</a>
+        </div>
+        
+        <div class="tests-list">
+            {% for test in tests %}
+                <div class="test-item">
+                    <div class="test-info">
+                        <h3>{{ test.name }}</h3>
+                        <p>Вопросов: {{ test.question_count }}</p>
+                        <p>Создан: {{ test.created_at|date:"d.m.Y H:i" }}</p>
+                        {% if test.description %}
+                            <p class="test-description">{{ test.description }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="test-actions">
+                        <a href="{% url 'test_progress' test.id %}" class="btn btn-success btn-sm mb-1">
+                            📝 Пройти тест
+                        </a>
+
+                        <a href="{% url 'export_test' test.id %}" class="btn btn-info btn-sm mb-1">
+                            📥 Экспорт Теста
+                        </a>
+
+                        <a href="{% url 'export_answers' test.id %}" class="btn btn-primary btn-sm mb-1">
+                            📥 Экспорт Ответов
+                        </a>
+
+                        <a href="#" class="btn btn-warning btn-sm mb-1" onclick="openEditModal({{ test.id }}, '{{ test.name|escapejs }}', '{{ test.description|escapejs }}')">
+                            ✏️ Редактировать
+                        </a>
+
+                        <form method="post" class="delete-form mb-1">
+                            {% csrf_token %}
+                            <input type="hidden" name="test_id" value="{{ test.id }}">
+                            <input type="hidden" name="action" value="delete">
+                            <button type="submit" class="btn btn-danger btn-sm w-100" 
+                                    onclick="return confirm('Вы уверены, что хотите удалить тест \"{{ test.name }}\"?')">
+                                🗑️ Удалить
+                            </button>
+                        </form>
+                    </div>
                 </div>
-                
-                <!-- tests/templates/tests/manage_tests.html - обновим раздел с кнопками -->
-                <!-- tests/templates/tests/manage_tests.html - обновим раздел с кнопками -->
-                <div class="test-actions">
-                 <a href="{% url 'test_progress' test.id %}" class="take-test-btn" style="background-color: #28a745;">
-                    📝 Пройти тест
-                </a>
-    
-                <a href="{% url 'export_test' test.id %}" class="export-btn" style="background-color: #17a2b8;">
-                    📥 Экспорт Теста в Excel
-                </a>
-    
-                <a href="{% url 'export_answers' test.id %}" class="export-btn" style="background-color: #6f42c1;">
-                    📥 Экспорт Ответов в Excel
-                </a>
-    
-                <a href="#" class="edit-btn" onclick="openEditModal({{ test.id }}, '{{ test.name|escapejs }}', '{{ test.description|escapejs }}')">
-                    ✏️ Редактировать
-                </a>
-    
-                    <form method="post" class="delete-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="test_id" value="{{ test.id }}">
-                        <input type="hidden" name="action" value="delete">
-                        <button type="submit" class="delete-btn" 
-                                onclick="return confirm('Вы уверены, что хотите удалить тест \"{{ test.name }}\"?')">
-                            🗑️ Удалить
-                        </button>
-                    </form>
+            {% empty %}
+                <div class="no-tests text-center py-4">
+                    <p>Тесты не найдены.</p>
+                    <a href="{% url 'upload_excel' %}" class="btn btn-primary">Загрузите первый тест</a>
                 </div>
-            </div>
-        {% empty %}
-            <p class="no-tests">Тесты не найдены. <a href="{% url 'upload_excel' %}">Загрузите первый тест</a></p>
-        {% endfor %}
+            {% endfor %}
+        </div>
     </div>
 </div>
 
@@ -72,96 +75,84 @@
             
             <div class="form-group">
                 <label for="editTestName">Название теста:</label>
-                <input type="text" id="editTestName" name="test_name" required>
+                <input type="text" id="editTestName" name="test_name" class="form-control" required>
             </div>
             
             <div class="form-group">
                 <label for="editTestDescription">Описание теста:</label>
-                <textarea id="editTestDescription" name="test_description" rows="4"></textarea>
+                <textarea id="editTestDescription" name="test_description" rows="4" class="form-control"></textarea>
             </div>
             
-            <button type="submit" class="save-btn">Сохранить изменения</button>
+            <button type="submit" class="btn btn-success w-100">Сохранить изменения</button>
         </form>
     </div>
 </div>
 
 <style>
     .manage-tests-container {
-        max-width: 800px;
-        margin: 0 auto;
+        max-width: 100%;
     }
     
     .nav-links {
         display: flex;
         justify-content: space-between;
         margin-bottom: 20px;
+        gap: 10px;
     }
     
     .test-item {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        padding: 15px;
-        margin-bottom: 15px;
+        align-items: flex-start;
+        padding: 20px;
+        margin-bottom: 20px;
         background-color: #f9f9f9;
-        border-radius: 5px;
+        border-radius: 8px;
         border-left: 4px solid #3498db;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .test-info {
+        flex: 1;
+        padding-right: 20px;
     }
     
     .test-info h3 {
         margin: 0 0 10px 0;
         color: #2c3e50;
+        font-size: 1.25rem;
     }
     
     .test-description {
         font-style: italic;
         color: #7f8c8d;
-        margin: 5px 0 0 0;
+        margin: 10px 0 0 0;
+        line-height: 1.4;
     }
     
     .test-actions {
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        min-width: 150px;
+        gap: 8px;
+        min-width: 180px;
     }
     
-    .take-test-btn, .export-btn, .edit-btn {
-        color: white;
-        padding: 8px 12px;
-        text-decoration: none;
-        border-radius: 4px;
+    .test-actions .btn {
         text-align: center;
         font-size: 14px;
-    }
-    
-    .edit-btn {
-        background-color: #ffc107;
-    }
-    
-    .export-btn {
-        background-color: #17a2b8;
+        padding: 8px 12px;
     }
     
     .delete-form {
         margin: 0;
     }
     
-    .delete-btn {
-        background-color: #e74c3c;
-        color: white;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        width: 100%;
-    }
-    
     .no-tests {
         text-align: center;
-        padding: 30px;
+        padding: 40px 20px;
         background-color: #f9f9f9;
-        border-radius: 5px;
+        border-radius: 8px;
+        border: 2px dashed #dee2e6;
     }
     
     /* Стили для модального окна */
@@ -180,11 +171,12 @@
     .modal-content {
         background-color: #fefefe;
         margin: 10% auto;
-        padding: 20px;
+        padding: 25px;
         border: 1px solid #888;
-        width: 80%;
+        width: 90%;
         max-width: 500px;
-        border-radius: 5px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
     
     .close {
@@ -193,6 +185,7 @@
         font-size: 28px;
         font-weight: bold;
         cursor: pointer;
+        line-height: 1;
     }
     
     .close:hover {
@@ -200,30 +193,103 @@
     }
     
     .form-group {
-        margin-bottom: 15px;
+        margin-bottom: 20px;
     }
     
     .form-group label {
         display: block;
-        margin-bottom: 5px;
+        margin-bottom: 8px;
         font-weight: bold;
+        color: #495057;
     }
     
-    .form-group input, .form-group textarea {
+    .form-control {
         width: 100%;
-        padding: 8px;
+        padding: 10px 12px;
         border: 1px solid #ddd;
         border-radius: 4px;
+        font-size: 14px;
+        transition: border-color 0.3s;
     }
     
-    .save-btn {
-        background-color: #28a745;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 4px;
-        cursor: pointer;
-        width: 100%;
+    .form-control:focus {
+        border-color: #3498db;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+
+    /* Адаптивность для планшетов */
+    @media (max-width: 991px) {
+        .test-item {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .test-info {
+            padding-right: 0;
+            margin-bottom: 15px;
+        }
+        
+        .test-actions {
+            min-width: auto;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        
+        .test-actions .btn {
+            flex: 1;
+            min-width: 120px;
+            margin: 2px;
+        }
+        
+        .nav-links {
+            flex-direction: column;
+        }
+    }
+
+    /* Адаптивность для мобильных устройств */
+    @media (max-width: 768px) {
+        .test-item {
+            padding: 15px;
+        }
+        
+        .test-actions {
+            flex-direction: column;
+        }
+        
+        .test-actions .btn {
+            width: 100%;
+            margin: 2px 0;
+        }
+        
+        .modal-content {
+            margin: 20% auto;
+            padding: 20px;
+            width: 95%;
+        }
+        
+        .nav-links .btn {
+            width: 100%;
+            text-align: center;
+        }
+    }
+
+    /* Адаптивность для маленьких мобильных устройств */
+    @media (max-width: 480px) {
+        .test-item {
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .test-info h3 {
+            font-size: 1.1rem;
+        }
+        
+        .modal-content {
+            margin: 10% auto;
+            padding: 15px;
+        }
     }
 </style>
 

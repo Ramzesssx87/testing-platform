@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Создание зачета{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Создание нового зачета</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="{{ form.test.id_for_label }}" class="form-label">{{ form.test.label }}</label>
+                    {{ form.test }}
+                    {% if form.test.errors %}
+                        <div class="text-danger">{{ form.test.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.question_count.id_for_label }}" class="form-label">{{ form.question_count.label }}</label>
+                    {{ form.question_count }}
+                    {% if form.question_count.errors %}
+                        <div class="text-danger">{{ form.question_count.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">{{ form.question_count.help_text }}</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.time_limit_minutes.id_for_label }}" class="form-label">{{ form.time_limit_minutes.label }}</label>
+                    {{ form.time_limit_minutes }}
+                    {% if form.time_limit_minutes.errors %}
+                        <div class="text-danger">{{ form.time_limit_minutes.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">{{ form.time_limit_minutes.help_text }}</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.starts_at.id_for_label }}" class="form-label">{{ form.starts_at.label }}</label>
+                    {{ form.starts_at }}
+                    {% if form.starts_at.errors %}
+                        <div class="text-danger">{{ form.starts_at.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">{{ form.starts_at.help_text }}</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.ends_at.id_for_label }}" class="form-label">{{ form.ends_at.label }}</label>
+                    {{ form.ends_at }}
+                    {% if form.ends_at.errors %}
+                        <div class="text-danger">{{ form.ends_at.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">{{ form.ends_at.help_text }}</div>
+                </div>
+                
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Создать зачет</button>
+                    <a href="{% url 'quiz_sessions' %}" class="btn btn-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Устанавливаем минимальную дату - текущее время + 1 час
+    document.addEventListener('DOMContentLoaded', function() {
+        const now = new Date();
+        now.setHours(now.getHours() + 1);
+        const minDateTime = now.toISOString().slice(0, 16);
+        
+        const startsAt = document.getElementById('{{ form.starts_at.id_for_label }}');
+        const endsAt = document.getElementById('{{ form.ends_at.id_for_label }}');
+        
+        if (startsAt) {
+            startsAt.min = minDateTime;
+        }
+        if (endsAt) {
+            endsAt.min = minDateTime;
+        }
+    });
+</script>
+{% endblock %}

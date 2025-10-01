@@ -1,66 +1,211 @@
+{% extends 'base.html' %}
 {% load custom_filters %}
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Результат ответа</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .feedback { 
-            padding: 20px; border-radius: 5px; margin: 20px 0; 
-            text-align: left; 
-        }
-        .correct { background-color: #dff0d8; color: #3c763d; }
-        .incorrect { background-color: #f2dede; color: #a94442; }
-        .document-ref { margin: 15px 0; }
-        .continue-btn { 
-            background-color: #2196F3; color: white; padding: 10px 15px; 
-            text-decoration: none; border-radius: 4px; display: inline-block; 
-        }
-        .question-text {
-            font-weight: bold;
-            margin-bottom: 15px;
-            background-color: #f8f9fa;
-            padding: 10px;
-            border-radius: 4px;
-        }
-        .answer-section {
-            margin: 10px 0;
-        }
-        .answer-block {
-            margin: 10px 0;
-        }
-        .answer-line {
-            margin: 5px 0;
-        }
-    </style>
-</head>
-<body>
+
+{% block title %}Результат ответа - {{ test.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .feedback { 
+        padding: 20px; 
+        border-radius: 5px; 
+        margin: 20px 0; 
+        text-align: left; 
+    }
+    .correct { 
+        background-color: #dff0d8; 
+        color: #3c763d; 
+        border-left: 4px solid #28a745;
+    }
+    .incorrect { 
+        background-color: #f2dede; 
+        color: #a94442; 
+        border-left: 4px solid #dc3545;
+    }
+    .document-ref { 
+        margin: 15px 0; 
+    }
+    .question-text {
+        font-weight: bold;
+        margin-bottom: 15px;
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 4px;
+    }
+    .answer-section {
+        margin: 10px 0;
+    }
+    .answer-block {
+        margin: 10px 0;
+    }
+    .answer-line {
+        margin: 5px 0;
+        padding: 8px 12px;
+        background-color: white;
+        border-radius: 4px;
+        display: inline-block;
+    }
+    
+    /* Таймер для зачета */
+    .timer-container {
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: #dc3545;
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 1000;
+        font-weight: bold;
+        text-align: center;
+        min-width: 140px;
+        font-family: 'Courier New', monospace;
+        font-size: 1.2rem;
+    }
+    
+    .timer-warning {
+        background: #ffc107;
+        color: #000;
+    }
+    
+    .timer-critical {
+        background: #dc3545;
+        color: white;
+        animation: pulse 1s infinite;
+    }
+    
+    .timer-expired {
+        background: #6c757d;
+        color: white;
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    
+    .continue-btn {
+        display: block;
+        text-align: center;
+        margin-top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Таймер для зачета -->
+{% if is_quiz and progress.end_time %}
+<div class="timer-container" id="timerContainer">
+    <div style="font-size: 0.9rem; margin-bottom: 5px;">Осталось времени:</div>
+    <div id="timerDisplay">--:--</div>
+</div>
+{% endif %}
+
+<div class="container" style="max-width: 800px; margin: 0 auto;">
     <div class="feedback {% if is_correct %}correct{% else %}incorrect{% endif %}">
-        <h2>{% if is_correct %}Ответ правильный!{% else %}Ответ не верный!{% endif %}</h2>
+        <h2>{% if is_correct %}✓ Правильный ответ!{% else %}✗ Неправильный ответ!{% endif %}</h2>
         
         <div class="question-text">
-            <h3>Вопрос:</h3>
+            <h3>Вопрос {{ question_number }} из {{ total_questions }}:</h3>
             <p>{{ question_text }}</p>
         </div>
         
-        <div class="document-ref">
-            <p>Ссылка на документ: {{ document_reference }}</p>
-        </div>
-        
         <div class="answer-block">
-            <strong>Правильные ответы:</strong>
+            <h5>Правильные ответы:</h5>
             {% for answer in correct_answers %}
-                <div class="answer-line">{{ answer_options|get_item:answer }}</div>
+                <div class="answer-line">{{ answer_options|get_item:answer|default:answer }}</div>
             {% endfor %}
         </div>
     </div>
     
-    <div style="text-align: center;">
-        <a href="{% url 'test_progress' test.id %}" class="continue-btn">
-            {% if next_question %}Следующий вопрос{% else %}Завершить тест{% endif %}
+    <div class="continue-btn">
+        {% if next_question %}
+        <a href="{% url 'test_progress' test.id %}" class="btn btn-primary">
+            Перейти к следующему вопросу →
         </a>
+        {% else %}
+        <a href="{% url 'test_results' test.id %}" class="btn btn-success">
+            Посмотреть результаты теста
+        </a>
+        {% endif %}
     </div>
-</body>
-</html>
+</div>
+
+<!-- Скрытые данные для таймера -->
+{% if is_quiz and progress.end_time %}
+<div id="timerData" 
+     data-end-time="{{ progress.end_time|date:'c' }}"
+     data-results-url="{% url 'test_results' test.id %}"
+     style="display: none;">
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if is_quiz and progress.end_time %}
+<script>
+    // Элементы DOM
+    const timerDisplay = document.getElementById('timerDisplay');
+    const timerContainer = document.getElementById('timerContainer');
+    const timerData = document.getElementById('timerData');
+    
+    // Получаем время окончания из данных
+    const endTime = new Date(timerData.dataset.endTime);
+    const resultsUrl = timerData.dataset.resultsUrl;
+    
+    // Функция форматирования времени
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Функция обновления таймера
+    function updateTimer() {
+        const now = new Date();
+        const timeLeft = Math.floor((endTime - now) / 1000); // в секундах
+        
+        // Обновляем отображение
+        if (timeLeft > 0) {
+            timerDisplay.textContent = formatTime(timeLeft);
+            
+            // Обновляем стили в зависимости от оставшегося времени
+            if (timeLeft < 300) { // Меньше 5 минут
+                timerContainer.className = 'timer-container timer-critical';
+            } else if (timeLeft < 600) { // Меньше 10 минут
+                timerContainer.className = 'timer-container timer-warning';
+            } else {
+                timerContainer.className = 'timer-container';
+            }
+            
+            // Продолжаем обновление
+            setTimeout(updateTimer, 1000);
+        } else {
+            // Время вышло
+            timerDisplay.textContent = '00:00';
+            timerContainer.className = 'timer-container timer-expired';
+            
+            // Перенаправляем на результаты
+            setTimeout(() => {
+                window.location.href = resultsUrl;
+            }, 1000);
+        }
+    }
+    
+    // Запускаем таймер
+    updateTimer();
+    
+    // Проверяем статус при загрузке страницы
+    window.addEventListener('load', function() {
+        const now = new Date();
+        if (now >= endTime) {
+            // Время уже истекло
+            setTimeout(() => {
+                window.location.href = resultsUrl;
+            }, 1000);
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,135 +1,99 @@
+<!-- tests/templates/tests/test_results.html -->
 {% extends 'base.html' %}
 {% load custom_filters %}
 
 {% block title %}Результаты теста - {{ test.name }}{% endblock %}
 
 {% block content %}
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>
-        Результаты теста: {{ test.name }}
-        {% if progress.test_type == 'express' %}
-            <span class="badge bg-warning">Экспресс-тест</span>
-        {% endif %}
-    </h1>
-    <a href="{% url 'statistics' %}" class="btn btn-secondary">← Назад к статистике</a>
-</div>
-
-<div class="test-results">
-    <div class="score">
-        <h2>Ваш результат: {{ correct_answers }}/{{ total_questions }} ({{ score|floatformat:1 }}%)</h2>
+<div class="container" style="max-width: 1000px; margin: 0 auto; padding: 20px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            Результаты теста: {{ test.name }}
+            {% if progress.test_type == 'express' %}
+                <span class="badge bg-warning">Экспресс-тест</span>
+            {% elif progress.test_type == 'quiz' %}
+                <span class="badge bg-info">Зачет</span>
+            {% else %}
+                <span class="badge bg-primary">Тренировка</span>
+            {% endif %}
+        </h1>
+        <a href="{% url 'statistics' %}" class="btn btn-secondary">К статистике</a>
     </div>
 
-    <div class="questions-review">
-        <h3>Детализация ответов:</h3>
-        {% for item in questions_with_order %}
-        {% with question=item.question %}
-        <div class="question-item {% if question.id|stringformat:'s' in user_answers %}answered{% else %}not-answered{% endif %}">
-            <div class="question-text">
-                <strong>Вопрос {{ item.order_number }}:</strong> {{ question.question_text }}
-            </div>
-            
-            <div class="correct-answer">
-                <strong>Правильные ответы:</strong>
-                {% for answer in question.correct_answer|split:"," %}
-                    <span class="correct-option">{{ question.answer_options|get_item:answer }}</span>
-                {% endfor %}
-            </div>
+    <div class="test-results">
+        <div class="score" style="text-align: center; margin-bottom: 30px;">
+            <h2>Ваш результат: {{ correct_answers }}/{{ total_questions }} ({{ score|floatformat:1 }}%)</h2>
+            {% if progress.test_type == 'quiz' %}
+                <div class="alert alert-info mt-3">
+                    <strong>Зачет завершен!</strong> Результаты будут доступны руководителю.
+                </div>
+            {% elif progress.test_type == 'express' %}
+                <div class="alert alert-warning mt-3">
+                    <strong>Экспресс-тест завершен!</strong> Результаты сохранены в статистике.
+                </div>
+            {% else %}
+                <div class="alert alert-primary mt-3">
+                    <strong>Тренировка завершена!</strong> Результаты сохранены в статистике.
+                </div>
+            {% endif %}
+        </div>
 
-            <div class="user-answer">
-                <strong>Ваши ответы:</strong>
-                {% with user_answer=user_answers|get_item:question.id|stringformat:'s' %}
-                    {% if user_answer %}
-                        {% for answer in user_answer %}
-                            <span class="user-option {% if answer in question.correct_answer %}correct{% else %}incorrect{% endif %}">
-                                {{ question.answer_options|get_item:answer }}
+        <div class="questions-review">
+            <h3>Детализация ответов:</h3>
+            {% for item in questions_with_order %}
+            {% with question=item.question %}
+            <div class="question-item" style="border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 5px; {% if item.is_correct %}border-left: 4px solid #28a745; background-color: #f8fff8;{% else %}border-left: 4px solid #dc3545; background-color: #fff8f8;{% endif %}">
+                <div class="question-text">
+                    <strong>Вопрос {{ item.order_number }}:</strong> {{ question.question_text }}
+                    {% if item.is_correct %}
+                        <span class="badge bg-success ms-2">Правильно</span>
+                    {% else %}
+                        <span class="badge bg-danger ms-2">Неправильно</span>
+                    {% endif %}
+                </div>
+                
+                <div class="correct-answer mb-2">
+                    <strong>Правильные ответы:</strong>
+                    {% if item.correct_answers_list %}
+                        {% for answer in item.correct_answers_list %}
+                            <span style="background-color: #dff0d8; padding: 5px 10px; margin: 2px; border-radius: 3px; display: inline-block;">
+                                {{ question.answer_options|get_item:answer|default:answer }}
                             </span>
                         {% endfor %}
                     {% else %}
-                        <span class="not-answered">Нет ответа</span>
+                        <span class="text-muted">Нет правильных ответов</span>
                     {% endif %}
-                {% endwith %}
-            </div>
+                </div>
 
-            <div class="document-reference">
-                <strong>Ссылка на документ:</strong> {{ question.document_reference }}
+                <div class="user-answer mb-2">
+                    <strong>Ваши ответы:</strong>
+                    {% with user_answer=user_answers|get_item:question.id %}
+                        {% if user_answer %}
+                            {% for answer in user_answer %}
+                                {% with answer_int=answer|add:0 %}
+                                <span style="background-color: {% if answer_int in item.correct_answers_list %}#dff0d8{% else %}#f2dede{% endif %}; padding: 5px 10px; margin: 2px; border-radius: 3px; display: inline-block;">
+                                    {{ question.answer_options|get_item:answer|default:answer }}
+                                </span>
+                                {% endwith %}
+                            {% endfor %}
+                        {% else %}
+                            <span style="color: #a94442; font-style: italic;">Нет ответа</span>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+
+                <div class="document-reference">
+                    <strong>Ссылка на документ:</strong> {{ question.document_reference }}
+                </div>
             </div>
+            {% endwith %}
+            {% endfor %}
         </div>
-        {% endwith %}
-        {% endfor %}
-    </div>
 
-    <div class="actions">
-        <a href="{% url 'statistics' %}" class="btn btn-secondary">← Назад к статистике</a>
-        <a href="{% url 'test_selection' %}" class="btn btn-primary">Вернуться к выбору теста</a>
-        <a href="{% url 'reset_test_progress' test.id %}" class="btn btn-warning">Пройти тест заново</a>
+        <div class="actions" style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="history.back()" class="btn btn-secondary">← Назад</button>
+            <a href="{% url 'test_selection' %}" class="btn btn-primary">К выбору теста</a>
+        </div>
     </div>
 </div>
-
-<style>
-    .question-item {
-        border: 1px solid #ddd;
-        padding: 15px;
-        margin-bottom: 15px;
-        border-radius: 5px;
-    }
-    
-    .correct-option {
-        background-color: #dff0d8;
-        padding: 5px;
-        margin: 2px;
-        border-radius: 3px;
-        display: inline-block;
-    }
-    
-    .user-option.correct {
-        background-color: #dff0d8;
-        padding: 5px;
-        margin: 2px;
-        border-radius: 3px;
-        display: inline-block;
-    }
-    
-    .user-option.incorrect {
-        background-color: #f2dede;
-        padding: 5px;
-        margin: 2px;
-        border-radius: 3px;
-        display: inline-block;
-    }
-    
-    .not-answered {
-        color: #a94442;
-        font-style: italic;
-    }
-    
-    .actions {
-        margin-top: 20px;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-    
-    .btn {
-        display: inline-block;
-        padding: 10px 15px;
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
-        border: none;
-        cursor: pointer;
-    }
-    
-    .btn-secondary {
-        background-color: #6c757d;
-    }
-    
-    .btn-primary {
-        background-color: #3498db;
-    }
-    
-    .btn-warning {
-        background-color: #f39c12;
-    }
-</style>
 {% endblock %}

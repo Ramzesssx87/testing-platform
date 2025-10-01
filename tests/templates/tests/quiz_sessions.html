@@ -1,0 +1,119 @@
+<!-- tests/templates/tests/quiz_sessions.html -->
+{% extends 'base.html' %}
+
+{% block title %}Сессии зачетов{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Сессии зачетов</h1>
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="{% url 'test_selection' %}" class="btn btn-secondary">← Назад к тестам</a>
+        <!-- ТОЛЬКО руководители могут создавать зачеты -->
+        {% if user.profile.can_view_other_results %}
+            <a href="{% url 'create_quiz' %}" class="btn btn-primary">Создать зачет</a>
+        {% endif %}
+    </div>
+    
+    <!-- Созданные мной зачеты (только для руководителей) -->
+    {% if user.profile.can_view_other_results and created_sessions %}
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Созданные мной зачеты</h5>
+        </div>
+        <div class="card-body">
+            <div class="list-group">
+                {% for session in created_sessions %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">{{ session.test.name }}</h6>
+                                <p class="mb-1">
+                                    Вопросов: {{ session.question_count }} | 
+                                    Время: {{ session.time_limit_minutes }} мин. |
+                                    Начало: {{ session.starts_at|date:"d.m.Y H:i" }} |
+                                    Окончание: {{ session.ends_at|date:"d.m.Y H:i" }}
+                                </p>
+                                <small class="text-muted">
+                                    Статус: 
+                                    {% if session.is_active %}
+                                        <span class="text-success">Активен</span>
+                                    {% else %}
+                                        <span class="text-warning">Ожидает активации</span>
+                                    {% endif %}
+                                    | Участников: {{ session.participants.count }}
+                                </small>
+                            </div>
+                            <div class="btn-group ms-3">
+                                <a href="{% url 'quiz_session_detail' session.id %}" class="btn btn-sm btn-outline-primary">Просмотр</a>
+                                <a href="{% url 'quiz_session_results' session.id %}" class="btn btn-sm btn-outline-info">Результаты</a>
+                                <a href="{% url 'delete_quiz_session' session.id %}" class="btn btn-sm btn-outline-danger">Удалить</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Зачеты для участия (для ВСЕХ пользователей) -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Зачеты для участия</h5>
+        </div>
+        <div class="card-body">
+            {% if participant_sessions %}
+                <div class="list-group">
+                    {% for session in participant_sessions %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">{{ session.test.name }}</h6>
+                                    <p class="mb-1">
+                                        {% if session.creator != request.user %}
+                                            Создатель: {{ session.creator.get_full_name|default:session.creator.username }} |
+                                        {% else %}
+                                            <strong>Вы создатель</strong> |
+                                        {% endif %}
+                                        Вопросов: {{ session.question_count }} | 
+                                        Время: {{ session.time_limit_minutes }} мин. |
+                                        Начало: {{ session.starts_at|date:"d.m.Y H:i" }} |
+                                        Окончание: {{ session.ends_at|date:"d.m.Y H:i" }}
+                                    </p>
+                                    <small class="text-muted">
+                                        Статус: 
+                                        {% if session.is_active %}
+                                            <span class="text-success">Активен - можно участвовать</span>
+                                        {% else %}
+                                            <span class="text-warning">Ожидает активации</span>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                {% if session.is_active %}
+                                    {% for p in session.participants.all %}
+                                        {% if p.user == request.user %}
+                                            {% if p.progress and p.progress.completed %}
+                                                <a href="{% url 'test_results' session.test.id %}?attempt_id={{ p.progress.attempt_id }}" 
+                                                   class="btn btn-sm btn-success">Завершен</a>
+                                            {% else %}
+                                                <a href="{% url 'participate_in_quiz' session.id %}" class="btn btn-sm btn-success">Участвовать</a>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% empty %}
+                                        <span class="btn btn-sm btn-secondary">Ошибка доступа</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <button class="btn btn-sm btn-secondary" disabled>Ожидание активации</button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted">Нет доступных зачетов для участия.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -2,12 +2,12 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
 
-{% block title %}Результаты группы - Экспресс-тесты{% endblock %}
+{% block title %}Результаты группы - Экспресс-тесты и Зачеты{% endblock %}
 
 {% block content %}
 <div class="group-results-container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>📊 Результаты группы - Экспресс-тесты</h1>
+        <h1>📊 Результаты группы</h1>
         <a href="{% url 'profile' %}" class="btn btn-secondary">← Назад к профилю</a>
     </div>
     
@@ -17,16 +17,16 @@
         <p><strong>Код подразделения:</strong> {{ user_profile.department_code }}</p>
         <p><strong>Иерархия:</strong> {{ user_profile.get_department_hierarchy }}</p>
         <p><strong>Можете просматривать результаты:</strong> {{ total_users }} пользователей</p>
-        <p><small class="text-muted">
+        <small class="text-muted">
             {% if request.GET.test %}
-                Показывается лучший результат каждого пользователя по выбранному экспресс-тесту
+                Показывается лучший результат каждого пользователя по выбранному тесту
             {% else %}
-                Показывается лучший результат каждого пользователя по всем экспресс-тестам
+                Показывается лучший результат каждого пользователя по всем тестам
             {% endif %}
-        </small></p>
+        </small>
     </div>
     
-    <!-- Статистика группы -->
+    <!-- Статистика группы - 3 карточки -->
     <div class="row mb-4">
         <div class="col-md-4">
             <div class="card text-center">
@@ -39,16 +39,16 @@
         <div class="col-md-4">
             <div class="card text-center">
                 <div class="card-body">
-                    <h5 class="card-title">{{ total_tests }}</h5>
-                    <p class="card-text">Пользователей прошло экспресс-тест</p>
+                    <h5 class="card-title">{{ avg_score }}%</h5>
+                    <p class="card-text">Средний балл экспресс-тестов</p>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card text-center">
                 <div class="card-body">
-                    <h5 class="card-title">{{ avg_score }}%</h5>
-                    <p class="card-text">Средний результат</p>
+                    <h5 class="card-title">{{ avg_quiz_score }}%</h5>
+                    <p class="card-text">Средний балл зачетов</p>
                 </div>
             </div>
         </div>
@@ -64,7 +64,7 @@
                 <div class="col-md-4">
                     <label for="test" class="form-label">Тест</label>
                     <select name="test" id="test" class="form-select">
-                        <option value="">Все экспресс-тесты (лучший результат)</option>
+                        <option value="">Все тесты (лучший результат)</option>
                         {% for test in available_tests %}
                             <option value="{{ test.id }}" {% if request.GET.test == test.id|stringformat:"i" %}selected{% endif %}>
                                 {{ test.name }} (лучший результат)
@@ -90,59 +90,59 @@
         </div>
     </div>
     
-    <!-- Таблица результатов -->
-    <div class="card">
-        <div class="card-header">
-            <h5>
+    <!-- Таблица результатов ЭКСПРЕСС-ТЕСТОВ -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
                 {% if request.GET.test %}
-                    Лучшие результаты по экспресс-тесту: {{ available_tests|get_item:request.GET.test|default:"Выбранный тест" }}
+                    Результаты по экспресс-тесту: {{ test_names|get_item:request.GET.test|default:"Выбранный тест" }}
                 {% else %}
-                    Лучшие результаты по всем экспресс-тестам
+                    🚀 Результаты по экспресс-тестам
                 {% endif %}
             </h5>
         </div>
         <div class="card-body">
             {% if completed_tests %}
             <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
+                <table class="table table-striped table-hover">
+                    <thead class="table-light">
                         <tr>
-                            <th>Пользователь</th>
-                            <th>Код подразделения</th>
-                            <th>Тест</th>
-                            <th>Дата прохождения</th>
-                            <th>Результат</th>
-                            <th>Правильные ответы</th>
-                            <th>Количество вопросов</th>
-                            <th>Действия</th>
+                            <th style="width: 25%; text-align: center;">Пользователь</th>
+                            <th style="text-align: center;">Код подразделения</th>
+                            <th style="text-align: center;">Тест</th>
+                            <th style="text-align: center;">Дата прохождения</th>
+                            <th style="text-align: center;">Результат</th>
+                            <th style="text-align: center;">Правильные ответы</th>
+                            <th style="text-align: center;">Количество вопросов</th>
+                            <th style="text-align: center;">Действия</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for test_progress in completed_tests %}
                         <tr>
-                            <td>
+                            <td style="text-align: left;">
                                 <a href="{% url 'user_statistics_view' test_progress.user.id %}" 
-                                   class="text-decoration-none" 
+                                   class="text-decoration-none fw-bold" 
                                    title="Посмотреть статистику пользователя">
-                                    <strong>{{ test_progress.user.profile.get_short_name }}</strong>
+                                    {{ test_progress.user.profile.get_short_name }}
                                 </a>
                                 <br><small class="text-muted">@{{ test_progress.user.username }}</small>
                             </td>
-                            <td>
+                            <td style="text-align: center;">
                                 {{ test_progress.user.profile.department_code|default:"Не указан" }}
-                                <br><small>{{ test_progress.user.profile.get_department_hierarchy }}</small>
+                                <br><small class="text-muted">{{ test_progress.user.profile.get_department_hierarchy }}</small>
                             </td>
-                            <td>{{ test_progress.test.name }}</td>
-                            <td>{{ test_progress.completed_at|date:"d.m.Y H:i" }}</td>
-                            <td>
-                                <span class="badge {% if test_progress.score >= 80 %}bg-success{% elif test_progress.score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                            <td style="text-align: center;">{{ test_progress.test.name }}</td>
+                            <td style="text-align: center;">{{ test_progress.completed_at|date:"d.m.Y H:i" }}</td>
+                            <td style="text-align: center;">
+                                <span class="badge {% if test_progress.score >= 80 %}bg-success{% elif test_progress.score >= 60 %}bg-warning{% else %}bg-danger{% endif %} fs-6">
                                     {{ test_progress.score|floatformat:1 }}%
                                 </span>
                             </td>
-                            <td>{{ test_progress.correct_answers_count }}/{{ test_progress.total_questions_count }}</td>
-                            <td>{{ test_progress.total_questions_count }} вопросов</td>
-                            <td>
-                                <a href="{% url 'user_test_results' test_progress.user.id test_progress.test.id %}?attempt_id={{ test_progress.attempt_id }}" 
+                            <td style="text-align: center;">{{ test_progress.correct_answers_count }}/{{ test_progress.total_questions_count }}</td>
+                            <td style="text-align: center;">{{ test_progress.total_questions_count }} вопросов</td>
+                            <td style="text-align: center;">
+                                <a href="{% url 'user_test_all_attempts' test_progress.user.id test_progress.test.id %}" 
                                    class="btn btn-sm btn-outline-primary">
                                     Детали
                                 </a>
@@ -164,6 +164,86 @@
             {% endif %}
         </div>
     </div>
+    
+    <!-- Таблица результатов ЗАЧЕТОВ -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                {% if request.GET.test %}
+                    Результаты по зачету: {{ test_names|get_item:request.GET.test|default:"Выбранный тест" }}
+                {% else %}
+                    🎯 Результаты по зачетам
+                {% endif %}
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if quiz_tests %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 25%; text-align: center;">Пользователь</th>
+                            <th style="text-align: center;">Код подразделения</th>
+                            <th style="text-align: center;">Тест</th>
+                            <th style="text-align: center;">Дата прохождения</th>
+                            <th style="text-align: center;">Результат</th>
+                            <th style="text-align: center;">Правильные ответы</th>
+                            <th style="text-align: center;">Количество вопросов</th>
+                            <th style="text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for quiz_progress in quiz_tests %}
+                        <tr>
+                            <td style="text-align: left;">
+                                <a href="{% url 'user_statistics_view' quiz_progress.user.id %}" 
+                                   class="text-decoration-none fw-bold" 
+                                   title="Посмотреть статистику пользователя">
+                                    {{ quiz_progress.user.profile.get_short_name }}
+                                </a>
+                                <br><small class="text-muted">@{{ quiz_progress.user.username }}</small>
+                            </td>
+                            <td style="text-align: center;">
+                                {{ quiz_progress.user.profile.department_code|default:"Не указан" }}
+                                <br><small class="text-muted">{{ quiz_progress.user.profile.get_department_hierarchy }}</small>
+                            </td>
+                            <td style="text-align: center;">
+                                {{ quiz_progress.test.name }}
+                                {% if quiz_progress.quiz_session %}
+                                    <br><small class="text-muted">Сессия зачета</small>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center;">{{ quiz_progress.completed_at|date:"d.m.Y H:i" }}</td>
+                            <td style="text-align: center;">
+                                <span class="badge {% if quiz_progress.score >= 80 %}bg-success{% elif quiz_progress.score >= 60 %}bg-warning{% else %}bg-danger{% endif %} fs-6">
+                                    {{ quiz_progress.score|floatformat:1 }}%
+                                </span>
+                            </td>
+                            <td style="text-align: center;">{{ quiz_progress.correct_answers_count }}/{{ quiz_progress.total_questions_count }}</td>
+                            <td style="text-align: center;">{{ quiz_progress.total_questions_count }} вопросов</td>
+                            <td style="text-align: center;">
+                                <a href="{% url 'user_test_all_attempts' quiz_progress.user.id quiz_progress.test.id %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    Детали
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <p class="text-muted">Нет результатов зачетов для отображения.</p>
+                {% if request.GET.test or request.GET.date_from or request.GET.date_to %}
+                    <p>Попробуйте изменить параметры фильтрации.</p>
+                {% else %}
+                    <p>Пользователи в вашей группе еще не завершили ни одного зачета.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 <style>
@@ -174,14 +254,24 @@
     
     .table th {
         background-color: #f8f9fa;
+        font-weight: 600;
     }
     
     .badge {
         font-size: 0.8em;
+        min-width: 70px;
     }
     
     a.text-decoration-none:hover {
         text-decoration: underline !important;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f5f5f5;
+    }
+    
+    .card-header h5 {
+        font-weight: 600;
     }
 </style>
 {% endblock %}

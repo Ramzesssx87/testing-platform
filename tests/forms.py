@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.contrib.auth.models import User
 from .models import Test, UserProfile
+from django.utils import timezone
 
 class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(required=True, label="Email")
@@ -146,3 +147,49 @@ class ExcelUploadForm(forms.Form):
         label="Название теста (необязательно)",
         help_text="Если не указано, будет использовано имя файла"
     )
+
+# Функция для проведения зачета 
+
+class QuizCreationForm(forms.Form):
+    test = forms.ModelChoiceField(
+        queryset=Test.objects.all().order_by('name'),
+        empty_label="Выберите тест",
+        label="Тест для зачета"
+    )
+    question_count = forms.IntegerField(
+        min_value=5,
+        max_value=100,
+        initial=20,
+        label="Количество вопросов",
+        help_text="От 5 до 100 вопросов"
+    )
+    time_limit_minutes = forms.IntegerField(
+        min_value=10,
+        max_value=180,
+        initial=45,
+        label="Лимит времени (минуты)",
+        help_text="От 10 до 180 минут"
+    )
+    starts_at = forms.DateTimeField(
+        label="Время начала зачета",
+        widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        help_text="Дата и время начала зачета"
+    )
+    ends_at = forms.DateTimeField(
+        label="Время окончания зачета",
+        widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        help_text="Дата и время окончания зачета"
+    )
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        starts_at = cleaned_data.get('starts_at')
+        ends_at = cleaned_data.get('ends_at')
+        
+        if starts_at and ends_at:
+            if starts_at >= ends_at:
+                raise forms.ValidationError("Время окончания должно быть позже времени начала")
+            if starts_at < timezone.now():
+                raise forms.ValidationError("Время начала не может быть в прошлом")
+        
+        return cleaned_data

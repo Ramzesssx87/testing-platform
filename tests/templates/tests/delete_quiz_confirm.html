@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Удаление зачета - {{ quiz_session.test.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">Подтверждение удаления</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Вы уверены, что хотите удалить зачет?</h5>
+                    
+                    <!-- Предупреждение если зачет уже начался -->
+                    {% now "Y-m-d H:i:s" as current_time %}
+                    {% if quiz_session.starts_at|date:"Y-m-d H:i:s" <= current_time %}
+                    <div class="alert alert-warning">
+                        <strong>Внимание!</strong> Этот зачет уже начался. 
+                        Удаление приведет к потере всех текущих результатов участников.
+                        Это действие нельзя отменить.
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <strong>Внимание!</strong> Это действие нельзя отменить.
+                    </div>
+                    {% endif %}
+                    
+                    <div class="quiz-info mb-4">
+                        <h6>Информация о зачете:</h6>
+                        <ul class="list-group">
+                            <li class="list-group-item">
+                                <strong>Тест:</strong> {{ quiz_session.test.name }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Количество вопросов:</strong> {{ quiz_session.question_count }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Лимит времени:</strong> {{ quiz_session.time_limit_minutes }} минут
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Время начала:</strong> {{ quiz_session.starts_at|date:"d.m.Y H:i" }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Время окончания:</strong> {{ quiz_session.ends_at|date:"d.m.Y H:i" }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Участников:</strong> {{ quiz_session.participants.count }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Статус:</strong> 
+                                {% now "Y-m-d H:i:s" as current_time %}
+                                {% if quiz_session.starts_at|date:"Y-m-d H:i:s" > current_time %}
+                                    <span class="text-primary">Не начался</span>
+                                {% elif quiz_session.ends_at|date:"Y-m-d H:i:s" < current_time %}
+                                    <span class="text-secondary">Завершен</span>
+                                {% else %}
+                                    <span class="text-success">В процессе</span>
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                🗑️ Да, удалить зачет
+                            </button>
+                            <a href="{% url 'quiz_session_detail' quiz_session.id %}" class="btn btn-secondary">
+                                Отмена
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

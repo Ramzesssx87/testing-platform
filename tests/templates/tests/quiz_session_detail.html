@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block title %}Зачет: {{ quiz_session.test.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Зачет: {{ quiz_session.test.name }}</h1>
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="{% url 'quiz_sessions' %}" class="btn btn-secondary">← Назад к зачетам</a>
+        {% if is_creator %}
+            <a href="{% url 'quiz_session_results' quiz_session.id %}" class="btn btn-info">Результаты</a>
+        {% endif %}
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Информация о зачете</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Тест:</strong> {{ quiz_session.test.name }}</p>
+                    <p><strong>Количество вопросов:</strong> {{ quiz_session.question_count }}</p>
+                    <p><strong>Лимит времени:</strong> {{ quiz_session.time_limit_minutes }} минут</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Начало:</strong> {{ quiz_session.starts_at|date:"d.m.Y H:i" }}</p>
+                    <p><strong>Окончание:</strong> {{ quiz_session.ends_at|date:"d.m.Y H:i" }}</p>
+                    <p><strong>Статус:</strong> 
+                        {% if quiz_session.is_active %}
+                            <span class="text-success">Активен</span>
+                            {% if quiz_session.manually_activated %}
+                                <small class="text-muted">(активирован вручную)</small>
+                            {% else %}
+                                <small class="text-muted">(активирован автоматически)</small>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-warning">Ожидает активации</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Кнопка активации для создателя -->
+            {% if is_creator and not quiz_session.is_active %}
+                <div class="mt-3">
+                    <a href="{% url 'start_quiz_session' quiz_session.id %}" class="btn btn-success">Активировать зачет немедленно</a>
+                    <small class="text-muted d-block mt-1">
+                        Зачет будет автоматически активирован в {{ quiz_session.starts_at|date:"d.m.Y H:i" }} или вы можете активировать его сейчас
+                    </small>
+                </div>
+            {% elif is_creator and quiz_session.is_active %}
+                <div class="alert alert-success mt-3">
+                    <strong>Зачет активирован!</strong> 
+                    {% if quiz_session.manually_activated %}
+                        Вы активировали зачет вручную. Участники могут начать тестирование.
+                    {% else %}
+                        Зачет активирован автоматически по расписанию. Участники могут начать тестирование.
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Показываем только НЕ завершивших тест -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Участники, которые еще не завершили тест</h5>
+        </div>
+        <div class="card-body">
+            {% with not_completed=participants|dictsort:"user.profile.last_name" %}
+                {% if not_completed %}
+                    <div class="list-group">
+                        {% for participant in not_completed %}
+                            {% if not participant.completed_at %}
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">
+                                                {{ participant.user.profile.last_name }} 
+                                                {{ participant.user.first_name|first }}.
+                                                {% if participant.user.profile.patronymic %}
+                                                    {{ participant.user.profile.patronymic|first }}.
+                                                {% endif %}
+                                            </h6>
+                                            <p class="mb-1">
+                                                {% if quiz_session.is_active %}
+                                                    <span class="text-warning">Может начать тестирование</span>
+                                                {% else %}
+                                                    <span class="text-secondary">Ожидает активации зачета</span>
+                                                {% endif %}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">Все участники завершили тест.</p>
+                {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+
+    {% if is_creator %}
+        <div class="card mt-4 border-danger">
+            <div class="card-body">
+                <h5 class="card-title text-danger">Опасная зона</h5>
+                <p class="card-text">Вы можете удалить этот зачет в любой момент.</p>
+                <a href="{% url 'delete_quiz_session' quiz_session.id %}" class="btn btn-danger">
+                    🗑️ Удалить зачет
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,4 +1,3 @@
-# tests/urls.py - добавим новый путь
 from django.urls import path
 from . import views
 
@@ -20,8 +19,31 @@ urlpatterns = [
     path('profile/edit/', views.edit_profile, name='edit_profile'),
     path('profile/statistics/', views.statistics, name='statistics'),
     path('profile/statistics/reset/', views.reset_statistics, name='reset_statistics'),
-     # Новые URL для просмотра групповых результатов
     path('group-results/', views.group_results, name='group_results'),
     path('user/<int:user_id>/test/<int:test_id>/results/', views.user_test_results, name='user_test_results'),
     path('user/<int:user_id>/statistics/', views.user_statistics_view, name='user_statistics_view'),
+    
+    # Проведение зачета
+    path('quiz/create/', views.create_quiz, name='create_quiz'),
+    path('quiz/sessions/', views.quiz_sessions, name='quiz_sessions'),
+    path('quiz/session/<int:session_id>/', views.quiz_session_detail, name='quiz_session_detail'),
+    path('quiz/session/<int:session_id>/start/', views.start_quiz_session, name='start_quiz_session'),
+    path('quiz/session/<int:session_id>/results/', views.quiz_session_results, name='quiz_session_results'),
+    path('quiz/session/<int:session_id>/delete/', views.delete_quiz_session, name='delete_quiz_session'),
+    path('quiz/participate/<int:session_id>/', views.participate_in_quiz, name='participate_in_quiz'),
+     # Новый URL для всех попыток теста пользователя
+    path('user/<int:user_id>/test/<int:test_id>/all-attempts/', views.user_test_all_attempts, name='user_test_all_attempts'),
+    # Новый URL для проверки времени
+    path('check-time-remaining/', views.check_time_remaining, name='check_time_remaining'),
+    # Графики статистики
+    path('statistics/training/', views.training_statistics, name='training_statistics'),
+    path('statistics/express/', views.express_statistics, name='express_statistics'),
+    path('statistics/quiz/', views.quiz_statistics, name='quiz_statistics'),
+    path('statistics/all/', views.all_statistics, name='all_statistics'),
+    
+    # Графики для просмотра статистики других пользователей
+    path('user/<int:user_id>/statistics/training/', views.user_training_statistics, name='user_training_statistics'),
+    path('user/<int:user_id>/statistics/express/', views.user_express_statistics, name='user_express_statistics'),
+    path('user/<int:user_id>/statistics/quiz/', views.user_quiz_statistics, name='user_quiz_statistics'),
+    path('user/<int:user_id>/statistics/all/', views.user_all_statistics, name='user_all_statistics'),
 ]

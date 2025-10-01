@@ -1,0 +1,378 @@
+<!-- tests/templates/user_statistics_charts.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Графики статистики - {{ target_user.username }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chart-container {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+    
+    .nav-pills .nav-link {
+        color: #495057;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        margin: 0 5px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .nav-pills .nav-link.active {
+        background-color: #007bff;
+        color: white;
+        font-weight: 600;
+        border-color: #007bff;
+    }
+    
+    .nav-pills .nav-link:hover:not(.active) {
+        background-color: #e9ecef;
+        color: #007bff;
+        border-color: #007bff;
+    }
+    
+    .chart-title {
+        color: #2c3e50;
+        font-weight: 600;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Хлебные крошки -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'group_results' %}">Результаты группы</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'user_statistics_view' target_user.id %}">Статистика пользователя</a></li>
+            <li class="breadcrumb-item active">
+                {% if test_type == 'normal' %}Тренировки
+                {% elif test_type == 'express' %}Экспресс-тесты
+                {% elif test_type == 'quiz' %}Зачеты
+                {% else %}Все тесты{% endif %}
+            </li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>
+                {% if test_type == 'normal' %}📚 Графики тренировок
+                {% elif test_type == 'express' %}🚀 Графики экспресс-тестов
+                {% elif test_type == 'quiz' %}🎯 Графики зачетов
+                {% else %}📊 Общая статистика{% endif %}
+            </h1>
+            <h4 class="text-muted">{{ target_user.profile.get_short_name|default:target_user.username }}</h4>
+        </div>
+        <a href="{% url 'user_statistics_view' target_user.id %}" class="btn btn-secondary">← Назад к статистике</a>
+    </div>
+
+    <!-- Навигация по типам тестов -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title text-center mb-3">📊 Выберите тип статистики:</h5>
+            <div class="nav nav-pills nav-fill justify-content-center">
+                <li class="nav-item">
+                    <a class="nav-link {% if test_type == 'normal' %}active bg-primary text-white{% else %}text-dark{% endif %}" 
+                       href="{% url 'user_training_statistics' target_user.id %}">
+                        📚 Тренировки
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if test_type == 'express' %}active bg-warning text-dark{% else %}text-dark{% endif %}" 
+                       href="{% url 'user_express_statistics' target_user.id %}">
+                        ⚡ Экспресс-тесты
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if test_type == 'quiz' %}active bg-info text-white{% else %}text-dark{% endif %}" 
+                       href="{% url 'user_quiz_statistics' target_user.id %}">
+                        🎯 Зачеты
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if test_type == 'all' %}active bg-success text-white{% else %}text-dark{% endif %}" 
+                       href="{% url 'user_all_statistics' target_user.id %}">
+                        📊 Все тесты
+                    </a>
+                </li>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистические карточки -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center stat-card">
+                <div class="card-body">
+                    <h3 class="text-primary">{{ total_tests }}</h3>
+                    <p class="card-text">Всего тестов</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center stat-card">
+                <div class="card-body">
+                    <h3 class="text-success">{{ avg_score }}%</h3>
+                    <p class="card-text">Средний результат</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center stat-card">
+                <div class="card-body">
+                    <h3 class="text-warning">{{ best_score }}%</h3>
+                    <p class="card-text">Лучший результат</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center stat-card">
+                <div class="card-body">
+                    <h3 class="text-danger">{{ worst_score }}%</h3>
+                    <p class="card-text">Худший результат</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if total_tests > 0 %}
+    <!-- Графики -->
+    <div class="row">
+        <!-- График прогресса по времени -->
+        <div class="col-md-8">
+            <div class="chart-container">
+                <h3 class="chart-title">📈 Прогресс по времени ({{ time_period }})</h3>
+                <canvas id="progressChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+        
+        <!-- Распределение результатов -->
+        <div class="col-md-4">
+            <div class="chart-container">
+                <h3 class="chart-title">📊 Распределение результатов</h3>
+                <canvas id="distributionChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Топ тестов -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="chart-container">
+                <h3 class="chart-title">🏆 Лучшие результаты по тестам</h3>
+                <canvas id="testsChart" width="400" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Список популярных тестов -->
+    {% if popular_tests %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="chart-container">
+                <h3 class="chart-title">⭐ Самые популярные тесты</h3>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Тест</th>
+                                <th>Количество попыток</th>
+                                <th>Средний результат</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for test in popular_tests %}
+                            <tr>
+                                <td>{{ test.test__name }}</td>
+                                <td>{{ test.count }}</td>
+                                <td>
+                                    <span class="badge {% if test.avg_score >= 80 %}bg-success{% elif test.avg_score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                        {{ test.avg_score|floatformat:1 }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="alert alert-info text-center">
+        <h4>📊 Нет данных для отображения</h4>
+        <p>У пользователя пока нет завершенных тестов выбранного типа за последние {{ time_period }}.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Данные для графиков
+const progressData = {{ chart_data.progress_data|safe }};
+const distributionData = {{ chart_data.score_distribution|safe }};
+const testsData = {{ chart_data.tests_performance|safe }};
+
+// График прогресса по времени
+if (progressData && progressData.length > 0) {
+    const progressCtx = document.getElementById('progressChart').getContext('2d');
+    const progressChart = new Chart(progressCtx, {
+        type: 'line',
+        data: {
+            labels: progressData.map(item => item.date),
+            datasets: [{
+                label: 'Результат (%)',
+                data: progressData.map(item => item.score),
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Динамика результатов'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+}
+
+// График распределения результатов
+if (distributionData && Object.keys(distributionData).length > 0) {
+    const distributionCtx = document.getElementById('distributionChart').getContext('2d');
+    
+    // Создаем новые данные с группировкой по 4-балльной системе
+    const groupedData = {
+        '0-50%': 0,
+        '51-70%': 0,
+        '71-89%': 0,
+        '90-100%': 0
+    };
+    
+    // Группируем данные по новой системе
+    Object.keys(distributionData).forEach(range => {
+        const count = distributionData[range];
+        if (range === '100') {
+            groupedData['90-100%'] += count;
+        } else {
+            const rangeStart = parseInt(range.split('-')[0]);
+            if (rangeStart <= 50) groupedData['0-50%'] += count;
+            else if (rangeStart <= 70) groupedData['51-70%'] += count;
+            else if (rangeStart <= 90) groupedData['71-89%'] += count;
+        }
+    });
+    
+    // Цвета согласно 4-балльной системе
+    const backgroundColors = [
+        '#dc3545', // красный - неудовлетворительно (0-50%)
+        '#ffc107', // желтый - удовлетворительно (51-70%)
+        '#0d6efd', // синий - хорошо (71-89%)
+        '#198754'  // зеленый - отлично (90-100%)
+    ];
+    
+    const distributionChart = new Chart(distributionCtx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(groupedData),
+            datasets: [{
+                data: Object.values(groupedData),
+                backgroundColor: backgroundColors,
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Распределение по системе оценок'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// График результатов по тестам
+if (testsData && testsData.length > 0) {
+    const testsCtx = document.getElementById('testsChart').getContext('2d');
+    const testsChart = new Chart(testsCtx, {
+        type: 'bar',
+        data: {
+            labels: testsData.map(item => item.test.length > 20 ? item.test.substring(0, 20) + '...' : item.test),
+            datasets: [{
+                label: 'Средний результат (%)',
+                data: testsData.map(item => item.avg_score),
+                backgroundColor: testsData.map((_, index) => 
+                    index % 2 === 0 ? 'rgba(40, 167, 69, 0.7)' : 'rgba(23, 162, 184, 0.7)'
+                )
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Результаты по тестам'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}
