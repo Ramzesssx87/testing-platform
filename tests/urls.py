@@ -30,6 +30,7 @@ urlpatterns = [
     path('quiz/session/<int:session_id>/start/', views.start_quiz_session, name='start_quiz_session'),
     path('quiz/session/<int:session_id>/results/', views.quiz_session_results, name='quiz_session_results'),
     path('quiz/session/<int:session_id>/delete/', views.delete_quiz_session, name='delete_quiz_session'),
+    path('quiz/session/<int:session_id>/update-participants/', views.update_quiz_participants, name='update_quiz_participants'),
     path('quiz/participate/<int:session_id>/', views.participate_in_quiz, name='participate_in_quiz'),
      # Новый URL для всех попыток теста пользователя
     path('user/<int:user_id>/test/<int:test_id>/all-attempts/', views.user_test_all_attempts, name='user_test_all_attempts'),

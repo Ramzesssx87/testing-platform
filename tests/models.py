@@ -79,40 +79,6 @@ class UserProfile(models.Model):
         
         return f"{self.last_name} {first_initial}{patronymic_initial}".strip()
     
-    def sync_with_user(self, save_user=False):
-        """Синхронизирует данные с User моделью без создания рекурсии"""
-        if self.user:
-            # Из профиля в User (только если в User пусто)
-            if self.first_name and not self.user.first_name:
-                self.user.first_name = self.first_name
-                if save_user:
-                    User.objects.filter(id=self.user.id).update(first_name=self.first_name)
-            
-            if self.last_name and not self.user.last_name:
-                self.user.last_name = self.last_name
-                if save_user:
-                    User.objects.filter(id=self.user.id).update(last_name=self.last_name)
-            
-            # Из User в профиль (только если в профиле пусто)
-            if self.user.first_name and not self.first_name:
-                self.first_name = self.user.first_name
-            
-            if self.user.last_name and not self.last_name:
-                self.last_name = self.user.last_name
-    
-    def save(self, *args, **kwargs):
-        # Синхронизируем перед сохранением (без сохранения User чтобы избежать рекурсии)
-        self.sync_with_user(save_user=False)
-        super().save(*args, **kwargs)
-        
-        # После сохранения профиля, обновляем User если нужно
-        if (self.first_name and self.first_name != self.user.first_name) or \
-           (self.last_name and self.last_name != self.user.last_name):
-            User.objects.filter(id=self.user.id).update(
-                first_name=self.first_name,
-                last_name=self.last_name
-            )
-    
     def parse_department_code(self):
         """Парсит код подразделения и возвращает компоненты"""
         if not self.department_code:
@@ -120,8 +86,8 @@ class UserProfile(models.Model):
             
         code = self.department_code.upper().strip()
         
-        # Убираем все 'У' из кода для анализа структуры
-        clean_code = code.replace('У', '')
+        # НЕ убираем 'У' из кода - она теперь часть кода группы
+        clean_code = code
         
         # Разбиваем код на компоненты
         parts = clean_code.split('-')
@@ -160,21 +126,89 @@ class UserProfile(models.Model):
         # Определяем уровень доступа на основе структуры кода
         if parsed['subsubgroup']:  # Формат: 35-1-1У
             # Может видеть всех в своей подподгруппе
-            base_pattern = f"{parsed['group']}-{parsed['subgroup']}-{parsed['subsubgroup']}"
+            base_pattern = f"{parsed['group']}-{parsed['subgroup']}-{parsed['subsubgroup'].replace('У', '')}"
             query &= Q(profile__department_code__iregex=rf'^{base_pattern}[\wУ]*$')
         
         elif parsed['subgroup']:  # Формат: 35-1У
             # Может видеть всех в своей подгруппе (включая подподгруппы)
-            base_pattern = f"{parsed['group']}-{parsed['subgroup']}"
-            query &= Q(profile__department_code__iregex=rf'^{base_pattern}(?:$|-\w+[\wУ]*$)')
+            base_pattern = f"{parsed['group']}-{parsed['subgroup'].replace('У', '')}"
+            query &= Q(profile__department_code__iregex=rf'^{base_pattern}(?:[\wУ]*$|-\w+[\wУ]*$)')
         
         elif parsed['group']:  # Формат: 35У
             # Может видеть всех в своей группе
-            base_pattern = f"{parsed['group']}"
-            query &= Q(profile__department_code__iregex=rf'^{base_pattern}(?:$|-\w+(?:$|-\w+[\wУ]*$))')
+            base_pattern = f"{parsed['group'].replace('У', '')}"
+            query &= Q(profile__department_code__iregex=rf'^{base_pattern}(?:[\wУ]*$|-\w+(?:[\wУ]*$|-\w+[\wУ]*$))')
         
         # НЕ исключаем самого себя из результатов - пользователь должен видеть свои результаты
         return User.objects.filter(query)
+    
+    def get_group_users(self):
+        """Возвращает всех пользователей в группе текущего пользователя - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ"""
+        from django.contrib.auth.models import User
+        from django.db.models import Q
+        
+        if not self.department_code:
+            return User.objects.filter(id=self.user.id)
+        
+        user_code = self.department_code.upper().strip()
+        #print(f"Поиск группы для кода: {user_code}")
+        
+        # Нормализуем код пользователя (убираем У)
+        user_base_code = user_code.replace('У', '').split('-')[0]
+        #print(f"Базовая группа (нормализованная): {user_base_code}")
+        
+        # Создаем запрос для поиска пользователей с той же базовой группой (игнорируя У)
+        query = Q(profile__department_code__iregex=rf'^{user_base_code}[\wУ-]*')
+        
+        users = User.objects.filter(query).distinct()
+        
+        #print(f"Найдено пользователей: {users.count()}")
+        #print("Найденные пользователи:")
+        #for i, user in enumerate(users[:10]):
+        #    user_code_found = user.profile.department_code if hasattr(user, 'profile') else "Нет профиля"
+        #    print(f"  {i+1}. {user.username}: {user_code_found}")
+        
+        return users
+    
+    def add_to_group_quizzes(self):
+        """Автоматически добавляет пользователя в активные зачеты его группы"""
+        from .models import QuizSession, QuizParticipant
+        from django.utils import timezone
+        
+        if not self.department_code:
+            return 0
+            
+        now = timezone.now()
+        added_count = 0
+        
+        try:
+            # Получаем пользователей группы
+            group_users = self.get_group_users()
+            
+            # Находим активные зачеты, созданные руководителями из этой группы
+            active_quizzes = QuizSession.objects.filter(
+                ends_at__gte=now,
+                is_active=True
+            ).select_related('creator', 'test')
+            
+            # Фильтруем зачеты по создателю из той же группы
+            for quiz in active_quizzes:
+                if quiz.creator in group_users:
+                    # Проверяем, не добавлен ли уже пользователь
+                    if not QuizParticipant.objects.filter(
+                        quiz_session=quiz, 
+                        user=self.user
+                    ).exists():
+                        QuizParticipant.objects.create(
+                            quiz_session=quiz,
+                            user=self.user
+                        )
+                        added_count += 1
+                        
+        except Exception as e:
+            print(f"Ошибка при автоматическом добавлении в зачеты: {e}")
+            
+        return added_count
     
     def get_department_hierarchy(self):
         """Возвращает иерархию подразделения пользователя"""
@@ -196,7 +230,7 @@ class UserProfile(models.Model):
         verbose_name = "Профиль пользователя"
         verbose_name_plural = "Профили пользователей"
 
-# Остальной код models.py без изменений...
+
 class UserTestProgress(models.Model):
     TEST_TYPES = [
         ('normal', 'Обычный тест'),
@@ -313,22 +347,15 @@ class UserTestProgress(models.Model):
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        UserProfile.objects.create(user=instance)
+        profile = UserProfile.objects.create(user=instance)
+        
+        # Сразу синхронизируем данные из User в Profile
+        if instance.first_name and not profile.first_name:
+            profile.first_name = instance.first_name
+        if instance.last_name and not profile.last_name:
+            profile.last_name = instance.last_name
+        profile.save()
 
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    # Используем update вместо save чтобы избежать рекурсии
-    if hasattr(instance, 'profile'):
-        # Синхронизируем данные
-        instance.profile.sync_with_user(save_user=False)
-        UserProfile.objects.filter(id=instance.profile.id).update(
-            first_name=instance.profile.first_name,
-            last_name=instance.profile.last_name,
-            patronymic=instance.profile.patronymic,
-            department_code=instance.profile.department_code
-        )
-
-# Остальной код models.py без изменений...
 class QuizSession(models.Model):
     """Сессия зачета для группы"""
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_quizzes')

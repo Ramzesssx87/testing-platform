@@ -7,7 +7,6 @@ from django.utils import timezone
 class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(required=True, label="Email")
     
-    # Убираем дублирующие поля ФИО - используем стандартные поля User
     class Meta:
         model = User
         fields = ("username", "email", "first_name", "last_name", "password1", "password2")
@@ -23,49 +22,86 @@ class CustomUserCreationForm(UserCreationForm):
             max_length=100, 
             required=False, 
             label="Отчество",
-            widget=forms.TextInput(attrs={'placeholder': 'Введите ваше отчество (необязательно)'})
+            widget=forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Введите ваше отчество (необязательно)'
+            })
         )
         self.fields['department_code'] = forms.CharField(
             max_length=50, 
             required=False, 
             label="Код подразделения",
-            help_text="Формат: Группа-Подгруппа-Подподгруппа (например: 35-1-1). Добавьте 'У' для прав просмотра",
-            widget=forms.TextInput(attrs={'placeholder': 'Например: 35-1-1'})
+            help_text="Формат: Группа-Подгруппа-Подподгруппа (например: 35-1-1)",
+            widget=forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Например: 35-1-1'
+            })
         )
         
         # Настраиваем обязательные поля
         self.fields['first_name'].required = True
         self.fields['last_name'].required = True
-        self.fields['first_name'].widget.attrs.update({'placeholder': 'Введите ваше имя'})
-        self.fields['last_name'].widget.attrs.update({'placeholder': 'Введите вашу фамилию'})
+        self.fields['first_name'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Введите ваше имя'
+        })
+        self.fields['last_name'].widget.attrs.update({
+            'class': 'form-control', 
+            'placeholder': 'Введите вашу фамилию'
+        })
+        self.fields['username'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Никнейм'
+        })
+        self.fields['email'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Введите ваш email'
+        })
+        self.fields['password1'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Введите пароль'
+        })
+        self.fields['password2'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Повторите пароль'
+        })
     
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data["email"]
+        user.first_name = self.cleaned_data.get("first_name", "")
+        user.last_name = self.cleaned_data.get("last_name", "")
         
         if commit:
             user.save()
-            # Сохраняем дополнительные поля в профиль
+            
+            # Получаем или создаем профиль
             profile, created = UserProfile.objects.get_or_create(user=user)
+            
+            # Сохраняем ВСЕ данные из формы в профиль
+            profile.first_name = self.cleaned_data.get("first_name", "")
+            profile.last_name = self.cleaned_data.get("last_name", "")
             profile.patronymic = self.cleaned_data.get("patronymic", "")
             profile.department_code = self.cleaned_data.get("department_code", "")
+            
+            # Сохраняем профиль
             profile.save()
+            
+            # ОТЛАДОЧНАЯ ИНФОРМАЦИЯ после полного сохранения
+            print("=== ПОСЛЕ ПОЛНОГО СОХРАНЕНИЯ ===")
+            profile.refresh_from_db()  # Обновляем данные из базы
+            print(f"Профиль отчество в БД: {profile.patronymic}")
+            print(f"Профиль код в БД: {profile.department_code}")
             
         return user
 
 class UserProfileForm(forms.ModelForm):
-    # Используем стандартные поля User для ФИО
-    last_name = forms.CharField(
-        max_length=100, 
-        required=True, 
-        label="Фамилия",
-        widget=forms.TextInput(attrs={'placeholder': 'Введите вашу фамилию'})
-    )
-    first_name = forms.CharField(
-        max_length=100, 
-        required=True, 
-        label="Имя",
-        widget=forms.TextInput(attrs={'placeholder': 'Введите ваше имя'})
+    # Используем стандартные поля User для основных данных
+    username = forms.CharField(
+        max_length=150,
+        required=True,
+        label="Имя пользователя",
+        widget=forms.TextInput(attrs={'placeholder': 'Введите имя пользователя'})
     )
     email = forms.EmailField(
         required=True,
@@ -75,8 +111,10 @@ class UserProfileForm(forms.ModelForm):
     
     class Meta:
         model = UserProfile
-        fields = ['patronymic', 'department_code']
+        fields = ['last_name', 'first_name', 'patronymic', 'department_code']
         labels = {
+            'last_name': 'Фамилия',
+            'first_name': 'Имя', 
             'patronymic': 'Отчество',
             'department_code': 'Код подразделения',
         }
@@ -84,6 +122,8 @@ class UserProfileForm(forms.ModelForm):
             'department_code': 'Формат: Группа-Подгруппа-Подподгруппа (например: 35-1-1). Добавьте "У" для прав просмотра',
         }
         widgets = {
+            'last_name': forms.TextInput(attrs={'placeholder': 'Введите вашу фамилию'}),
+            'first_name': forms.TextInput(attrs={'placeholder': 'Введите ваше имя'}),
             'patronymic': forms.TextInput(attrs={'placeholder': 'Введите ваше отчество'}),
             'department_code': forms.TextInput(attrs={'placeholder': 'Например: 35-1-1'}),
         }
@@ -92,9 +132,29 @@ class UserProfileForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Устанавливаем начальные значения из объекта User
         if self.instance and self.instance.user:
-            self.fields['last_name'].initial = self.instance.user.last_name
-            self.fields['first_name'].initial = self.instance.user.first_name
+            self.fields['username'].initial = self.instance.user.username
             self.fields['email'].initial = self.instance.user.email
+            
+            # Убедимся, что данные из User синхронизированы с профилем
+            if not self.instance.first_name and self.instance.user.first_name:
+                self.instance.first_name = self.instance.user.first_name
+            if not self.instance.last_name and self.instance.user.last_name:
+                self.instance.last_name = self.instance.user.last_name
+    
+    def save(self, commit=True):
+        profile = super().save(commit=False)
+        
+        # Обновляем связанного пользователя
+        if profile.user:
+            profile.user.username = self.cleaned_data['username']
+            profile.user.email = self.cleaned_data['email']
+            if commit:
+                profile.user.save()
+        
+        if commit:
+            profile.save()
+            
+        return profile
 
 class UserEditForm(forms.ModelForm):
     class Meta:

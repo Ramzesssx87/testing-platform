@@ -10,6 +10,16 @@
         <a href="{% url 'quiz_sessions' %}" class="btn btn-secondary">← Назад к зачетам</a>
         {% if is_creator %}
             <a href="{% url 'quiz_session_results' quiz_session.id %}" class="btn btn-info">Результаты</a>
+            <div class="mt-3">
+                {% if quiz_session.is_active %}
+                    <a href="{% url 'update_quiz_participants' quiz_session.id %}" class="btn btn-info">
+                        🔄 Обновить список участников
+                    </a>
+                    <small class="text-muted d-block mt-1">
+                        Добавить новых пользователей группы в этот зачет
+                    </small>
+                {% endif %}
+            </div>
         {% endif %}
     </div>
     

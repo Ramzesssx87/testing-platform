@@ -3,6 +3,196 @@
 {% block title %}Регистрация{% endblock %}
 
 {% block extra_css %}
+<style>
+    .register-container {
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 20px;
+    }
+    
+    .register-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    
+    .card-header {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        border-radius: 0 !important;
+        padding: 30px;
+        text-align: center;
+        border-bottom: 2px solid #004085 !important;
+    }
+    
+    .card-header h2 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 2rem;
+    }
+    
+    .card-body {
+        padding: 40px;
+    }
+    
+    .form-group {
+        margin-bottom: 25px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 8px;
+        display: block;
+    }
+    
+    .form-control {
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 12px 15px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        background-color: #f8fafc;
+        width: 100%;
+    }
+    
+    .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        background-color: white;
+    }
+    
+    .form-text {
+        font-size: 12px;
+        color: #6c757d;
+        margin-top: 5px;
+    }
+    
+    .text-danger {
+        font-size: 14px;
+        margin-top: 5px;
+        display: block;
+        color: #dc3545;
+    }
+    
+    .btn {
+        border-radius: 10px;
+        padding: 12px 30px;
+        font-weight: 600;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 123, 255, 0.4);
+    }
+    
+    .btn-outline-secondary {
+        border: 2px solid #6c757d;
+        color: #6c757d;
+        background: transparent;
+    }
+    
+    .btn-outline-secondary:hover {
+        background-color: #6c757d;
+        color: white;
+        border-color: #6c757d;
+    }
+    
+    .alert-danger {
+        border-radius: 10px;
+        border: none;
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 15px;
+        margin-bottom: 25px;
+    }
+    
+    /* Анимации */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .register-card {
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    /* Стили для разделов формы */
+    .form-section {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .form-section:last-of-type {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+    
+    .section-title {
+        color: #0056b3;
+        font-weight: 600;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #007bff;
+        font-size: 1.2rem;
+    }
+    
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .register-container {
+            margin: 20px auto;
+            padding: 10px;
+        }
+        
+        .card-body {
+            padding: 25px;
+        }
+        
+        .card-header {
+            padding: 20px;
+        }
+        
+        .card-header h2 {
+            font-size: 1.5rem;
+        }
+        
+        .btn {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .d-flex.flex-wrap {
+            flex-direction: column;
+        }
+    }
+
+    /* Стили для обязательных полей */
+    .required-field::after {
+        content: " *";
+        color: #dc3545;
+    }
+
+    /* Ховер эффекты для полей */
+    .form-control:hover {
+        border-color: #007bff;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -16,101 +206,175 @@
                 <form method="post">
                     {% csrf_token %}
                     
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="id_last_name" class="form-label">Фамилия</label>
-                                <input type="text" id="id_last_name" name="last_name" class="form-control" 
-                                       value="{{ form.last_name.value|default:'' }}" required 
-                                       placeholder="Введите вашу фамилию">
-                                {% if form.last_name.errors %}
-                                    <div class="text-danger">{{ form.last_name.errors }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="id_first_name" class="form-label">Имя</label>
-                                <input type="text" id="id_first_name" name="first_name" class="form-control" 
-                                       value="{{ form.first_name.value|default:'' }}" required 
-                                       placeholder="Введите ваше имя">
-                                {% if form.first_name.errors %}
-                                    <div class="text-danger">{{ form.first_name.errors }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="id_patronymic" class="form-label">Отчество</label>
-                                <input type="text" id="id_patronymic" name="patronymic" class="form-control" 
-                                       value="{{ form.patronymic.value|default:'' }}" 
-                                       placeholder="Введите ваше отчество (необязательно)">
-                                {% if form.patronymic.errors %}
-                                    <div class="text-danger">{{ form.patronymic.errors }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="{{ form.username.id_for_label }}" class="form-label">Имя пользователя</label>
-                        {{ form.username }}
-                        {% if form.username.errors %}
-                            <div class="text-danger">{{ form.username.errors }}</div>
-                        {% endif %}
-                        <small class="form-text">Обязательное поле. Только буквы, цифры и @/./+/-/_.</small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
-                        {{ form.email }}
-                        {% if form.email.errors %}
-                            <div class="text-danger">{{ form.email.errors }}</div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="id_department_code" class="form-label">Код подразделения</label>
-                        <input type="text" id="id_department_code" name="department_code" class="form-control" 
-                               value="{{ form.department_code.value|default:'' }}" 
-                               placeholder="Например: 35-1-1">
-                        {% if form.department_code.errors %}
-                            <div class="text-danger">{{ form.department_code.errors }}</div>
-                        {% endif %}
-                        <small class="form-text">Формат: Группа-Подгруппа-Подподгруппа (например: 35-1-1). Добавьте 'У' для прав просмотра</small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="{{ form.password1.id_for_label }}" class="form-label">Пароль</label>
-                        {{ form.password1 }}
-                        {% if form.password1.errors %}
-                            <div class="text-danger">{{ form.password1.errors }}</div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="{{ form.password2.id_for_label }}" class="form-label">Подтверждение пароля</label>
-                        {{ form.password2 }}
-                        {% if form.password2.errors %}
-                            <div class="text-danger">{{ form.password2.errors }}</div>
-                        {% endif %}
-                    </div>
-                    
+                    <!-- Общие ошибки -->
                     {% if form.non_field_errors %}
                         <div class="alert alert-danger">
+                            <strong>Ошибка!</strong>
                             {% for error in form.non_field_errors %}
                                 {{ error }}
                             {% endfor %}
                         </div>
                     {% endif %}
+
+                    <!-- Раздел: Учетные данные -->
+                    <div class="form-section">
+                        <h5 class="section-title">🔐 Учетные данные</h5>
+                        
+                        <div class="form-group">
+                            <label for="id_username" class="form-label required-field">Имя пользователя</label>
+                            <input type="text" id="id_username" name="username" class="form-control" 
+                                   value="{{ form.username.value|default:'' }}" required 
+                                   placeholder="Никнейм">
+                            {% if form.username.errors %}
+                                <div class="text-danger">{{ form.username.errors }}</div>
+                            {% endif %}
+                            <small class="form-text">Только буквы, цифры и символы @/./+/-/_</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_password1" class="form-label required-field">Пароль</label>
+                            <input type="password" id="id_password1" name="password1" class="form-control" 
+                                   required placeholder="Введите пароль">
+                            {% if form.password1.errors %}
+                                <div class="text-danger">{{ form.password1.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_password2" class="form-label required-field">Подтверждение пароля</label>
+                            <input type="password" id="id_password2" name="password2" class="form-control" 
+                                   required placeholder="Повторите пароль">
+                            {% if form.password2.errors %}
+                                <div class="text-danger">{{ form.password2.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Раздел: Контактная информация -->
+                    <div class="form-section">
+                        <h5 class="section-title">📧 Контактная информация</h5>
+                        
+                        <div class="form-group">
+                            <label for="id_email" class="form-label required-field">Email</label>
+                            <input type="email" id="id_email" name="email" class="form-control" 
+                                   value="{{ form.email.value|default:'' }}" required 
+                                   placeholder="Введите ваш email">
+                            {% if form.email.errors %}
+                                <div class="text-danger">{{ form.email.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Раздел: Личная информация -->
+                    <div class="form-section">
+                        <h5 class="section-title">👤 Личная информация</h5>
+                        
+                        <div class="form-group">
+                            <label for="id_last_name" class="form-label required-field">Фамилия</label>
+                            <input type="text" id="id_last_name" name="last_name" class="form-control" 
+                                   value="{{ form.last_name.value|default:'' }}" required 
+                                   placeholder="Введите вашу фамилию">
+                            {% if form.last_name.errors %}
+                                <div class="text-danger">{{ form.last_name.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_first_name" class="form-label required-field">Имя</label>
+                            <input type="text" id="id_first_name" name="first_name" class="form-control" 
+                                   value="{{ form.first_name.value|default:'' }}" required 
+                                   placeholder="Введите ваше имя">
+                            {% if form.first_name.errors %}
+                                <div class="text-danger">{{ form.first_name.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_patronymic" class="form-label">Отчество</label>
+                            <input type="text" id="id_patronymic" name="patronymic" class="form-control" 
+                                   value="{{ form.patronymic.value|default:'' }}" 
+                                   placeholder="Введите ваше отчество">
+                            {% if form.patronymic.errors %}
+                                <div class="text-danger">{{ form.patronymic.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_department_code" class="form-label">Код подразделения</label>
+                            <input type="text" id="id_department_code" name="department_code" class="form-control" 
+                                   value="{{ form.department_code.value|default:'' }}" 
+                                   placeholder="Например: 35-1-1">
+                            {% if form.department_code.errors %}
+                                <div class="text-danger">{{ form.department_code.errors }}</div>
+                            {% endif %}
+                            <small class="form-text">Формат: Группа-Подгруппа-Подподгруппа</small>
+                        </div>
+                    </div>
                     
-                    <div class="d-flex flex-wrap">
-                        <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
-                        <a href="{% url 'login' %}" class="btn btn-outline-secondary">Уже есть аккаунт?</a>
+                    <!-- Кнопки -->
+                    <div class="d-flex flex-wrap gap-3 mt-4">
+                        <button type="submit" class="btn btn-primary flex-fill">
+                            📝 Зарегистрироваться
+                        </button>
+                        <a href="{% url 'login' %}" class="btn btn-outline-secondary flex-fill">
+                            🔐 Уже есть аккаунт?
+                        </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Добавляем плавное появление полей формы
+        const formGroups = document.querySelectorAll('.form-group');
+        formGroups.forEach((group, index) => {
+            group.style.opacity = '0';
+            group.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                group.style.transition = 'all 0.5s ease';
+                group.style.opacity = '1';
+                group.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+        
+        // Подсветка обязательных полей
+        const requiredFields = document.querySelectorAll('[required]');
+        requiredFields.forEach(field => {
+            const label = field.closest('.form-group').querySelector('.form-label');
+            if (label && !label.innerHTML.includes('*')) {
+                label.classList.add('required-field');
+            }
+        });
+
+        // Валидация паролей в реальном времени
+        const password1 = document.getElementById('id_password1');
+        const password2 = document.getElementById('id_password2');
+        
+        function validatePasswords() {
+            if (password1.value && password2.value) {
+                if (password1.value !== password2.value) {
+                    password2.style.borderColor = '#dc3545';
+                    password2.style.boxShadow = '0 0 0 3px rgba(220, 53, 69, 0.1)';
+                } else {
+                    password2.style.borderColor = '#28a745';
+                    password2.style.boxShadow = '0 0 0 3px rgba(40, 167, 69, 0.1)';
+                }
+            } else {
+                password2.style.borderColor = '#e9ecef';
+                password2.style.boxShadow = 'none';
+            }
+        }
+        
+        if (password1 && password2) {
+            password1.addEventListener('input', validatePasswords);
+            password2.addEventListener('input', validatePasswords);
+        }
+    });
+</script>
 {% endblock %}

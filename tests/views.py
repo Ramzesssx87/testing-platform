@@ -31,13 +31,123 @@ def register_view(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
+            
+            # ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ ДАННЫЕ ИЗ БАЗЫ
+            user.refresh_from_db()
+            if hasattr(user, 'profile'):
+                user.profile.refresh_from_db()
+            
+            # УЛУЧШЕННАЯ СИНХРОНИЗАЦИЯ ЗАЧЕТОВ ПРИ РЕГИСТРАЦИИ
+            from .models import QuizSession, QuizParticipant
+            from django.utils import timezone
+            
+            now = timezone.now()
+            user_profile = user.profile
+            
+            #print(f"=== ДЕТАЛЬНАЯ СИНХРОНИЗАЦИЯ ЗАЧЕТОВ ДЛЯ {user.username} ===")
+            #print(f"Код подразделения пользователя: {user_profile.department_code}")
+
+            if user_profile.department_code:
+                try:
+                    user_code = user_profile.department_code.upper().strip()
+                    #print(f"Код пользователя для синхронизации: {user_code}")
+                    
+                    # Разбираем код пользователя на уровни иерархии (БЕЗ У)
+                    user_parts = user_code.replace('У', '').split('-')
+                    user_levels = []
+                    for i in range(len(user_parts)):
+                        level_code = '-'.join(user_parts[:i+1])
+                        user_levels.append(level_code)
+                    #print(f"Уровни иерархии пользователя (без У): {user_levels}")
+
+                    # Ищем активные зачеты
+                    active_quizzes = QuizSession.objects.filter(
+                        ends_at__gte=now,
+                        is_active=True
+                    ).select_related('creator', 'test').prefetch_related('participants')
+
+                    #print(f"Найдено активных зачетов: {active_quizzes.count()}")
+
+                    # Проверяем каждый зачет на принадлежность к иерархии пользователя
+                    matching_quizzes = []
+                    for quiz in active_quizzes:
+                        creator_username = quiz.creator.username
+                        creator_code = quiz.creator.profile.department_code if hasattr(quiz.creator, 'profile') else "Нет профиля"
+                        
+                        #print(f"\n--- Зачет: {quiz.test.name} ---")
+                        #print(f"Создатель: {creator_username}")
+                        #print(f"Код создателя: {creator_code}")
+                        
+                        # Проверяем, находится ли создатель зачета в иерархии пользователя
+                        creator_in_user_hierarchy = False
+                        if creator_code:
+                            creator_code_clean = creator_code.upper().strip().replace('У', '')
+                            creator_parts = creator_code_clean.split('-')
+                            
+                            # Создаем уровни иерархии создателя (БЕЗ У)
+                            creator_levels = []
+                            for i in range(len(creator_parts)):
+                                level_code = '-'.join(creator_parts[:i+1])
+                                creator_levels.append(level_code)
+                            
+                            # Проверяем пересечение уровней иерархии (БЕЗ У)
+                            common_levels = set(user_levels) & set(creator_levels)
+                            creator_in_user_hierarchy = bool(common_levels)
+                            
+                            #print(f"Уровни создателя (без У): {creator_levels}")
+                            #print(f"Общие уровни: {common_levels}")
+                            #print(f"Создатель в иерархии пользователя: {creator_in_user_hierarchy}")
+
+                        #if creator_in_user_hierarchy:
+                            #matching_quizzes.append(quiz)
+                            #print("✓ ДОБАВЛЯЕМ: Создатель находится в иерархии пользователя")
+                        #else:
+                            #print("✗ ПРОПУСКАЕМ: Создатель не в иерархии пользователя")
+
+                    # Добавляем пользователя в найденные зачеты
+                    added_count = 0
+                    for quiz in matching_quizzes:
+                        # Проверяем, не добавлен ли уже
+                        already_participant = QuizParticipant.objects.filter(
+                            quiz_session=quiz, 
+                            user=user
+                        ).exists()
+                        
+                        if not already_participant:
+                            QuizParticipant.objects.create(
+                                quiz_session=quiz,
+                                user=user
+                            )
+                            added_count += 1
+                            print(f"✓ ПОЛЬЗОВАТЕЛЬ ДОБАВЛЕН В ЗАЧЕТ: {quiz.test.name}")
+                        else:
+                            print(f"ℹ ПОЛЬЗОВАТЕЛЬ УЖЕ УЧАСТНИК: {quiz.test.name}")
+
+                    #print(f"\n=== ИТОГ ===")
+                    #print(f"Добавлено зачетов: {added_count}")
+
+                    if added_count > 0:
+                        messages.info(request, f'Вы автоматически добавлены в {added_count} активных зачетов вашей группы.')
+                    else:
+                        messages.info(request, 'На данный момент нет активных зачетов в вашей группе.')
+                        
+                except Exception as e:
+                    print(f"Ошибка при добавлении в зачеты при регистрации: {e}")
+                    import traceback
+                    traceback.print_exc()
+            else:
+                print("Код подразделения не указан - пропускаем синхронизацию зачетов")
+                messages.info(request, 'Укажите код подразделения в профиле для доступа к зачетам вашей группы.')
+            
             messages.success(request, f'Добро пожаловать, {user.username}! Регистрация прошла успешно.')
             return redirect('test_selection')
         else:
             messages.error(request, 'Пожалуйста, исправьте ошибки в форме.')
+            return render(request, 'registration/register.html', {'form': form})
     else:
         form = CustomUserCreationForm()
-    return render(request, 'registration/register.html', {'form': form})
+        return render(request, 'registration/register.html', {'form': form})
+
     
 def login_view(request):
     if request.method == 'POST':
@@ -59,6 +169,55 @@ def logout_view(request):
 
 @login_required
 def test_selection(request):
+    # АВТОМАТИЧЕСКАЯ СИНХРОНИЗАЦИЯ ЗАЧЕТОВ ПРИ КАЖДОМ ЗАХОДЕ
+    from .models import QuizSession, QuizParticipant
+    from django.utils import timezone
+    
+    user = request.user
+    user_profile = user.profile
+    
+    now = timezone.now()
+    
+    if user_profile.department_code:
+        try:
+            # Находим зачеты, созданные руководителями из той же группы
+            group_users = user_profile.get_group_users()
+            
+            # Ищем активные зачеты, где создатель входит в ту же группу
+            active_quizzes = QuizSession.objects.filter(
+                ends_at__gte=now,
+                is_active=True
+            )
+            
+            # Фильтруем зачеты, где создатель в той же группе что и пользователь
+            matching_quizzes = []
+            for quiz in active_quizzes:
+                if quiz.creator in group_users:
+                    matching_quizzes.append(quiz)
+            
+            # Добавляем пользователя в найденные зачеты
+            added_count = 0
+            for quiz in matching_quizzes:
+                if not QuizParticipant.objects.filter(
+                    quiz_session=quiz, 
+                    user=user
+                ).exists():
+                    QuizParticipant.objects.create(
+                        quiz_session=quiz,
+                        user=user
+                    )
+                    added_count += 1
+            
+            # Сообщение показываем только если добавлены новые зачеты
+            # и это не первый запрос (чтобы избежать дублирования сообщений)
+            if added_count > 0 and not request.session.get('synced_quizzes', False):
+                messages.info(request, f'Доступно {added_count} новых зачетов вашей группы.')
+                request.session['synced_quizzes'] = True
+                
+        except Exception as e:
+            print(f"Ошибка при синхронизации зачетов: {e}")
+    
+
     normal_form = TestSelectionForm()
     express_form = ExpressTestForm()
     
@@ -830,27 +989,22 @@ def profile(request):
 def edit_profile(request):
     """Редактирование профиля пользователя"""
     if request.method == 'POST':
-        user_form = UserEditForm(request.POST, instance=request.user)
+        # Используем только UserProfileForm, которая теперь включает все необходимые поля
         profile_form = UserProfileForm(request.POST, instance=request.user.profile)
         
-        if user_form.is_valid() and profile_form.is_valid():
-            # Сохраняем данные пользователя
-            user = user_form.save()
-            
-            # Сохраняем данные профиля
-            profile = profile_form.save(commit=False)
-            profile.save()
+        if profile_form.is_valid():
+            # Сохраняем данные профиля (включая username, email, ФИО)
+            profile_form.save()
             
             messages.success(request, 'Ваш профиль успешно обновлен!')
             return redirect('profile')
         else:
             messages.error(request, 'Пожалуйста, исправьте ошибки в форме.')
     else:
-        user_form = UserEditForm(instance=request.user)
+        # Используем только одну форму
         profile_form = UserProfileForm(instance=request.user.profile)
     
     return render(request, 'edit_profile.html', {
-        'user_form': user_form,
         'profile_form': profile_form
     })
 
@@ -1355,8 +1509,8 @@ def create_quiz(request):
             starts_at = form.cleaned_data['starts_at']
             ends_at = form.cleaned_data['ends_at']
             
-            # Получаем пользователей группы
-            group_users = user_profile.get_viewable_users_query()
+            # Получаем пользователей группы с помощью нового метода
+            group_users = user_profile.get_group_users()
             
             # ВКЛЮЧАЕМ СОЗДАТЕЛЯ В СПИСОК УЧАСТНИКОВ
             all_users = list(group_users) 
@@ -1538,6 +1692,46 @@ def participate_in_quiz(request, session_id):
     }
     
     return redirect('test_progress', test_id=quiz_session.test.id)
+
+
+@login_required
+def update_quiz_participants(request, session_id):
+    """Ручное обновление участников зачета"""
+    quiz_session = get_object_or_404(QuizSession, id=session_id)
+    
+    # Проверяем права доступа
+    if quiz_session.creator != request.user:
+        messages.error(request, 'Только создатель зачета может обновлять список участников.')
+        return redirect('quiz_session_detail', session_id=session_id)
+    
+    # Получаем всех пользователей группы создателя
+    creator_profile = request.user.profile
+    group_users = creator_profile.get_group_users()
+    
+    # Добавляем создателя, если его нет
+    if request.user not in group_users:
+        group_users = list(group_users) + [request.user]
+    
+    added_count = 0
+    existing_count = 0
+    
+    # Добавляем всех пользователей группы в зачет
+    for user in group_users:
+        if not QuizParticipant.objects.filter(
+            quiz_session=quiz_session, 
+            user=user
+        ).exists():
+            QuizParticipant.objects.create(
+                quiz_session=quiz_session,
+                user=user
+            )
+            added_count += 1
+        else:
+            existing_count += 1
+    
+    messages.success(request, f'Добавлено {added_count} новых участников в зачет. Уже было: {existing_count}.')
+    return redirect('quiz_session_detail', session_id=session_id)
+    
 
 @login_required
 def quiz_session_results(request, session_id):
@@ -1888,3 +2082,53 @@ def prepare_chart_data(tests, test_type):
         'tests_performance': json.dumps(tests_performance[:10]),  # Топ-10 тестов
         'total_tests': len(tests)
     }
+
+
+@login_required
+def sync_user_quizzes(request):
+    """Синхронизация зачетов пользователя при каждом входе"""
+    from .models import QuizSession, QuizParticipant
+    from django.utils import timezone
+    
+    user = request.user
+    user_profile = user.profile
+    
+    now = timezone.now()
+    
+    if user_profile.department_code:
+        try:
+            # Находим зачеты, созданные руководителями из той же группы
+            group_users = user_profile.get_group_users()
+            
+            # Ищем активные зачеты, где создатель входит в ту же группу
+            active_quizzes = QuizSession.objects.filter(
+                ends_at__gte=now,
+                is_active=True
+            )
+            
+            # Фильтруем зачеты, где создатель в той же группе что и пользователь
+            matching_quizzes = []
+            for quiz in active_quizzes:
+                if quiz.creator in group_users:
+                    matching_quizzes.append(quiz)
+            
+            # Добавляем пользователя в найденные зачеты
+            added_count = 0
+            for quiz in matching_quizzes:
+                if not QuizParticipant.objects.filter(
+                    quiz_session=quiz, 
+                    user=user
+                ).exists():
+                    QuizParticipant.objects.create(
+                        quiz_session=quiz,
+                        user=user
+                    )
+                    added_count += 1
+            
+            if added_count > 0:
+                messages.info(request, f'Вы добавлены в {added_count} новых зачетов вашей группы.')
+                
+        except Exception as e:
+            print(f"Ошибка при синхронизации зачетов: {e}")
+    
+    return redirect('test_selection')    

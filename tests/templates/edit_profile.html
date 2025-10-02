@@ -49,10 +49,17 @@
                         
                         <h5 class="mb-3 mt-4">Контактная информация</h5>
                         <div class="mb-3">
+                            <label for="id_username" class="form-label">Имя пользователя *</label>
+                            {{ profile_form.username }}
+                            {% if profile_form.username.errors %}
+                                <div class="text-danger">{{ profile_form.username.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
                             <label for="id_email" class="form-label">Email *</label>
-                            {{ user_form.email }}
-                            {% if user_form.email.errors %}
-                                <div class="text-danger">{{ user_form.email.errors }}</div>
+                            {{ profile_form.email }}
+                            {% if profile_form.email.errors %}
+                                <div class="text-danger">{{ profile_form.email.errors }}</div>
                             {% endif %}
                         </div>
                         
@@ -63,8 +70,16 @@
                             {% if profile_form.department_code.errors %}
                                 <div class="text-danger">{{ profile_form.department_code.errors }}</div>
                             {% endif %}
-                            <div class="form-text">{{ profile_form.department_code.help_text }}</div>
+                            <div class="form-text">{{ profile_form.fields.department_code.help_text }}</div>
                         </div>
+                        
+                        {% if profile_form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in profile_form.non_field_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                         
                         <div class="d-flex gap-2 mt-4">
                             <button type="submit" class="btn btn-primary">Сохранить изменения</button>
